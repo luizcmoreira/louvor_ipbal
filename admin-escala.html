@@ -31,6 +31,7 @@
   .hint { font-size:0.78rem; color:#5c665f; margin-top:4px; }
 </style>
 </head>
+<script src="config.js"></script>
 <body>
 <a class="home-link" href="escala.html">← Escala</a>
 <h1>Adicionar culto na escala</h1>
@@ -54,19 +55,22 @@
 <div class="check-grid" id="repertorio"></div>
 <p class="hint">O tom mostrado na Escala/Ensaios é o do ministro selecionado acima (ou o tom original, se não houver preset dele pra essa música).</p>
 
-<button onclick="gerar()">Gerar bloco</button>
-
-<div id="out" style="display:none"></div>
-<button class="copybtn" id="copybtn" style="display:none" onclick="copiar()">Copiar</button>
+<button onclick="salvar()" id="save-btn">Salvar na escala</button>
+<p id="msg" style="text-align:center;font-size:0.85rem;margin-top:10px;"></p>
 
 <script>
 let people = [], songs = [];
 
 async function init() {
-  [people, songs] = await Promise.all([
-    fetch("participantes.json", { cache: "no-store" }).then(r => r.json()),
-    fetch("dados.json", { cache: "no-store" }).then(r => r.json()),
-  ]);
+  try {
+    [people, songs] = await Promise.all([
+      fetch(API_URL + "?sheet=Participantes", { cache: "no-store" }).then(r => r.json()),
+      fetch(API_URL + "?sheet=Musicas", { cache: "no-store" }).then(r => r.json()),
+    ]);
+  } catch (e) {
+    document.getElementById("musicos").innerHTML = "<p style='color:#b23f3f'>Não consegui carregar os dados. Confira o config.js.</p>";
+    return;
+  }
 
   const ministros = people.filter(p => p.vocal === "ministro" || p.vocal === "ministra");
   document.getElementById("ministro").innerHTML = ministros.map(p => `<option value="${p.name}">${p.name}</option>`).join("");
@@ -104,26 +108,38 @@ function musicosEscolhidos() {
   });
 }
 
-function gerar() {
+async function salvar() {
+  const date = document.getElementById("date").value;
+  if (!date) { alert("Escolhe a data do culto."); return; }
+  const musicos = musicosEscolhidos().map(m => `${m.name}:${m.instrumento}`).join(", ");
   const entry = {
-    date: document.getElementById("date").value,
+    action: "addEscala",
+    date,
     label: document.getElementById("label").value,
     ministro: document.getElementById("ministro").value,
-    musicos: musicosEscolhidos(),
-    vocalBacking: checked("backing-cb"),
-    repertorio: checked("rep-cb"),
+    musicos,
+    vocalBacking: checked("backing-cb").join(", "),
+    repertorio: checked("rep-cb").join(", "),
   };
-  const block = "  " + JSON.stringify(entry) + ",";
-  const out = document.getElementById("out");
-  out.textContent = block;
-  out.style.display = "block";
-  document.getElementById("copybtn").style.display = "block";
-}
-
-function copiar() {
-  navigator.clipboard.writeText(document.getElementById("out").textContent);
-  document.getElementById("copybtn").textContent = "Copiado!";
-  setTimeout(() => document.getElementById("copybtn").textContent = "Copiar", 1500);
+  const btn = document.getElementById("save-btn");
+  const msg = document.getElementById("msg");
+  btn.disabled = true; btn.textContent = "Salvando…";
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(entry),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao salvar");
+    msg.style.color = "#1e6b3f";
+    msg.textContent = "Culto adicionado à escala!";
+    setTimeout(() => location.href = "escala.html", 900);
+  } catch (e) {
+    msg.style.color = "#b23f3f";
+    msg.textContent = "Não deu pra salvar: " + e.message;
+    btn.disabled = false; btn.textContent = "Salvar na escala";
+  }
 }
 </script>
 </body>

@@ -18,10 +18,15 @@
     body { padding:14px; }
   }
   button { margin-top:16px; padding:12px 18px; border-radius:8px; border:none; background:#1e6b3f; color:#ffffff; font-weight:700; font-size:1rem; cursor:pointer; width:100%; }
-  #out { margin-top:16px; white-space:pre-wrap; background:#eef2ec; border:1px solid #dde3da; border-radius:8px; padding:12px; font-family: ui-monospace, monospace; font-size:0.85rem; }
-  .copybtn { background:#ffffff; color:#1c2620; border:1px solid #dde3da; margin-top:8px; }
+  .secondary-btn { background:#ffffff; color:#1c2620; border:1px solid #dde3da; }
+  .paste-box {
+    margin-top:10px; border:1px dashed #b7c2b9; border-radius:10px; padding:12px; background:#eef2ec;
+  }
+  .paste-box textarea { min-height:110px; font-family: ui-monospace, monospace; font-size:0.82rem; }
+  .hint { font-size:0.78rem; color:#5c665f; margin-top:6px; }
 </style>
 </head>
+<script src="config.js"></script>
 <body>
 <a class="home-link" href="index.html">← Início</a>
 <h1>Gerador de bloco de música</h1>
@@ -50,35 +55,106 @@
 <textarea id="chordpro" placeholder="[G]Te agradeço [D]Senhor
 [Em]Por tudo o [C]que fizeste"></textarea>
 
-<button onclick="gerar()">Gerar bloco</button>
+<div class="paste-box">
+  <label style="margin-top:0;">Colar cifra de outro site (formato acorde-em-cima-da-letra)</label>
+  <textarea id="raw-cifra" placeholder="       G          D
+Te agradeço, Senhor"></textarea>
+  <button type="button" class="secondary-btn" onclick="converterCifra()">Converter pro campo acima</button>
+  <p class="hint">Tenta juntar automaticamente o acorde com a sílaba de baixo. Não sai perfeito sempre — depois de converter, ajuste à mão o que precisar ali em cima.</p>
+</div>
 
-<div id="out" style="display:none"></div>
-<button class="copybtn" id="copybtn" style="display:none" onclick="copiar()">Copiar</button>
+<button onclick="salvar()" id="save-btn">Salvar música</button>
+<p id="msg" style="text-align:center;font-size:0.85rem;margin-top:10px;"></p>
 
 <script>
-function esc(s) { return (s || "").replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\n/g,"\\n"); }
-
-function gerar() {
+async function salvar() {
+  const title = document.getElementById('title').value.trim();
+  if (!title) { alert("Preenche o título."); return; }
   const presets = {};
   [["s1n","s1t"],["s2n","s2t"],["s3n","s3t"]].forEach(([n,t]) => {
     const name = document.getElementById(n).value.trim();
     const tone = document.getElementById(t).value.trim();
     if (name && tone) presets[name] = tone;
   });
-  const presetsStr = Object.entries(presets).map(([k,v]) => `"${esc(k)}": "${esc(v)}"`).join(", ");
-
-  const block = `  { "title": "${esc(document.getElementById('title').value)}", "originalKey": "${esc(document.getElementById('key').value)}", "presets": { ${presetsStr} }, "chordpro": "${esc(document.getElementById('chordpro').value)}", "status": "nao", "isNew": ${document.getElementById('isNew').checked}, "videoCompleta": "${esc(document.getElementById('videoCompleta').value)}", "videoCongregacional": "${esc(document.getElementById('videoCongregacional').value)}" },`;
-
-  const out = document.getElementById('out');
-  out.textContent = block;
-  out.style.display = 'block';
-  document.getElementById('copybtn').style.display = 'block';
+  const payload = {
+    action: "addMusica",
+    title,
+    originalKey: document.getElementById('key').value,
+    tom_Ricardo: presets["Ricardo"] || "",
+    tom_Kariny: presets["Kariny"] || "",
+    tom_Luiz: presets["Luiz"] || "",
+    chordpro: document.getElementById('chordpro').value,
+    isNew: document.getElementById('isNew').checked,
+    videoCompleta: document.getElementById('videoCompleta').value,
+    videoCongregacional: document.getElementById('videoCongregacional').value,
+  };
+  const btn = document.getElementById('save-btn');
+  const msg = document.getElementById('msg');
+  btn.disabled = true; btn.textContent = "Salvando…";
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao salvar");
+    msg.style.color = "#1e6b3f";
+    msg.textContent = "Música salva!";
+    setTimeout(() => location.href = "cifras.html", 900);
+  } catch (e) {
+    msg.style.color = "#b23f3f";
+    msg.textContent = "Não deu pra salvar: " + e.message;
+    btn.disabled = false; btn.textContent = "Salvar música";
+  }
 }
 
-function copiar() {
-  navigator.clipboard.writeText(document.getElementById('out').textContent);
-  document.getElementById('copybtn').textContent = 'Copiado!';
-  setTimeout(() => document.getElementById('copybtn').textContent = 'Copiar', 1500);
+// ── Conversor "acorde em cima da letra" → ChordPro inline ──────────────────
+const CHORD_RE = /^[A-G](#|b)?(m7b5|m7|m9|m6|m|maj7|maj9|maj|min7|min9|min|dim7|dim|aug|sus4|sus2|sus|add9|add2|add|6|7|9|11|13)?(\/[A-G](#|b)?)?$/;
+
+function isChordToken(tok) { return CHORD_RE.test(tok); }
+
+function isChordLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  const tokens = trimmed.split(/\s+/);
+  const hits = tokens.filter(isChordToken).length;
+  return hits / tokens.length >= 0.6;
+}
+
+function mergeChordIntoLyric(chordLine, lyricLine) {
+  const matches = [];
+  const re = /\S+/g;
+  let m;
+  while ((m = re.exec(chordLine)) !== null) matches.push({ text: m[0], col: m.index });
+  let result = lyricLine;
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const insertAt = Math.min(matches[i].col, result.length);
+    result = result.slice(0, insertAt) + `[${matches[i].text}]` + result.slice(insertAt);
+  }
+  return result;
+}
+
+function converterCifra() {
+  const raw = document.getElementById('raw-cifra').value;
+  if (!raw.trim()) return;
+  const lines = raw.replace(/\r\n/g, "\n").split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isChordLine(line)) {
+      const next = lines[i + 1];
+      if (next !== undefined && next.trim() !== "" && !isChordLine(next)) {
+        out.push(mergeChordIntoLyric(line, next));
+        i++;
+      } else {
+        out.push(line.trim().split(/\s+/).map(c => `[${c}]`).join(" "));
+      }
+    } else {
+      out.push(line);
+    }
+  }
+  document.getElementById('chordpro').value = out.join("\n");
 }
 </script>
 </body>

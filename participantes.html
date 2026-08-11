@@ -33,6 +33,7 @@
   }
 </style>
 </head>
+<script src="config.js"></script>
 <body>
 
 <header>
@@ -47,7 +48,7 @@ async function load() {
   const main = document.getElementById("main");
   let people;
   try {
-    const res = await fetch("participantes.json", { cache: "no-store" });
+    const res = await fetch(API_URL + "?sheet=Participantes", { cache: "no-store" });
     people = await res.json();
   } catch (e) {
     main.innerHTML = "<p style='color:#b23f3f'>Não consegui carregar participantes.json.</p>";

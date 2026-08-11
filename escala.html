@@ -34,6 +34,7 @@
   .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:40px 20px; }
 </style>
 </head>
+<script src="config.js"></script>
 <body>
 
 <header>
@@ -52,8 +53,8 @@ async function load() {
   let escala, songs;
   try {
     [escala, songs] = await Promise.all([
-      fetch("escala.json", { cache: "no-store" }).then(r => r.json()),
-      fetch("dados.json", { cache: "no-store" }).then(r => r.json()),
+      fetch(API_URL + "?sheet=Escala", { cache: "no-store" }).then(r => r.json()),
+      fetch(API_URL + "?sheet=Musicas", { cache: "no-store" }).then(r => r.json()),
     ]);
   } catch (e) {
     main.innerHTML = "<p style='color:#b23f3f'>Não consegui carregar a escala.</p>";

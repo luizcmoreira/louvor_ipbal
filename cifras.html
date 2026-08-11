@@ -172,6 +172,7 @@
   }
 </style>
 </head>
+<script src="config.js"></script>
 <body>
 
 <header>
@@ -232,7 +233,7 @@
    a linha abaixo pela URL real do seu dados.json, no formato:
    https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPO/main/dados.json
    ========================================================================= */
-const DADOS_URL = "dados.json"; // funciona local (arquivo ao lado) e continua funcionando publicado, se o dados.json estiver na mesma pasta do repo
+const DADOS_URL = API_URL + "?sheet=Musicas"; // vem da planilha, ao vivo — ver config.js
 
 let SONGS = [];
 
@@ -299,35 +300,31 @@ function setFilter(f) {
 const STATUS_ORDER = ["nao", "mal", "bem"];
 const STATUS_TEXT = { bem: "Bem ensaiada", mal: "Mal ensaiada", nao: "Não ensaiada" };
 const STATUS_CLASS = { bem: "st-bem", mal: "st-mal", nao: "st-nao" };
-let dirty = false; // true depois de mudar algum status na tela, sem ainda ter sido salvo no dados.json
 
-function cycleStatus(realIdx, ev) {
+// Toca no rótulo de status → salva direto na planilha (POST em text/plain pra
+// não disparar preflight CORS, que o Apps Script não responde). Otimista: já
+// atualiza a tela, e desfaz se a gravação falhar.
+async function cycleStatus(realIdx, ev) {
   ev.stopPropagation();
   const song = SONGS[realIdx];
-  const i = STATUS_ORDER.indexOf(song.status || "nao");
-  song.status = STATUS_ORDER[(i + 1) % STATUS_ORDER.length];
-  dirty = true;
+  const prev = song.status || "nao";
+  const i = STATUS_ORDER.indexOf(prev);
+  const next = STATUS_ORDER[(i + 1) % STATUS_ORDER.length];
+  song.status = next;
   renderList();
-  showSaveBar();
-}
-
-function showSaveBar() {
-  let bar = document.getElementById("save-bar");
-  if (!dirty) { if (bar) bar.remove(); return; }
-  if (bar) return;
-  bar = document.createElement("div");
-  bar.id = "save-bar";
-  bar.style.cssText = "position:sticky;bottom:0;left:0;right:0;background:#1c2620;color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:0.85rem;z-index:20;";
-  bar.innerHTML = `<span style="flex:1">Status alterado nesta tela — copie o dados.json atualizado e suba pro GitHub.</span>
-    <button onclick="copyDadosJson()" style="background:#1e6b3f;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-weight:700;font-size:0.82rem;cursor:pointer;">Copiar dados.json</button>`;
-  document.body.appendChild(bar);
-}
-
-function copyDadosJson() {
-  const clean = SONGS.map(({ _idx, ...s }) => s);
-  navigator.clipboard.writeText(JSON.stringify(clean, null, 2));
-  const btn = document.querySelector("#save-bar button");
-  if (btn) { btn.textContent = "Copiado!"; setTimeout(() => btn.textContent = "Copiar dados.json", 1500); }
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "updateMusica", matchTitle: song.title, status: next }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao salvar");
+  } catch (e) {
+    song.status = prev;
+    renderList();
+    alert("Não consegui salvar o status agora (" + e.message + "). Confira sua internet e tenta de novo.");
+  }
 }
 
 function renderList() {
