@@ -14,12 +14,16 @@
  */
 
 function doGet(e) {
-  const sheetName = (e.parameter.sheet || "Musicas");
+  // e vem undefined se alguém rodar doGet direto no editor do Apps Script
+  // (botão "Executar"), sem passar por uma requisição HTTP de verdade.
+  const params = (e && e.parameter) || {};
+  const sheetName = params.sheet || "Musicas";
   const data = readSheet(sheetName);
   return jsonOut(data);
 }
 
 function doPost(e) {
+  if (!e || !e.postData) return jsonOut({ ok: false, error: "sem dados (rodou fora de uma requisição de verdade?)" });
   const body = JSON.parse(e.postData.contents);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
