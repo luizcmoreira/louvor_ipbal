@@ -144,6 +144,7 @@
     border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; cursor: pointer;
   }
   .tag-btn:active { background: var(--accent); color: var(--accent-on); }
+  .hint { font-size: 0.78rem; color: var(--muted); }
 
   .cifra {
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
@@ -161,6 +162,25 @@
     border-radius: 6px;
     margin: 0 3px 3px 0;
     vertical-align: 4px;
+  }
+  .structure-tag {
+    display: block;
+    margin: 14px 0 6px;
+    padding: 5px 12px;
+    background: rgba(196, 138, 23, 0.14);
+    color: #96650f;
+    font-weight: 800;
+    font-size: 0.62em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-radius: 6px;
+    width: fit-content;
+  }
+  @media print {
+    header, .links-row, #edit-cifra-box, .back-btn,
+    #view > button, .tone-control button { display: none !important; }
+    body { padding-bottom: 0; }
+    .cifra { box-shadow: none; border: none; padding: 0; }
   }
 
   .song-item.status-bem { background: rgba(30, 107, 63, 0.08); border-color: rgba(30, 107, 63, 0.3); }
@@ -212,6 +232,7 @@
   <div class="links-row" id="v-links"></div>
   <div class="links-row">
     <a href="#" onclick="toggleEditCifra(); return false;" id="edit-cifra-toggle">✏️ Editar cifra</a>
+    <a href="#" onclick="window.print(); return false;">🖨️ Imprimir / baixar</a>
   </div>
 
   <div class="cifra" id="v-cifra"></div>
@@ -221,12 +242,13 @@
       <button type="button" class="tag-btn" data-tag="[Intro]">Intro</button>
       <button type="button" class="tag-btn" data-tag="[Solo]">Solo</button>
       <button type="button" class="tag-btn" data-tag="[Break]">Break</button>
-      <button type="button" class="tag-btn" data-tag="(repete 2x)">Repetir 2x</button>
-      <button type="button" class="tag-btn" data-tag="(repete 3x)">Repetir 3x</button>
-      <button type="button" class="tag-btn" data-tag="(repete 4x)">Repetir 4x</button>
-      <button type="button" class="tag-btn" data-tag="(repete 8x)">Repetir 8x</button>
-      <button type="button" class="tag-btn" data-tag="(volta do início)">Voltar do início</button>
+      <button type="button" class="tag-btn" data-tag="[Repete 2x]">Repetir 2x</button>
+      <button type="button" class="tag-btn" data-tag="[Repete 3x]">Repetir 3x</button>
+      <button type="button" class="tag-btn" data-tag="[Repete 4x]">Repetir 4x</button>
+      <button type="button" class="tag-btn" data-tag="[Repete 8x]">Repetir 8x</button>
+      <button type="button" class="tag-btn" data-tag="[Volta do início]">Voltar do início</button>
     </div>
+    <p class="hint" style="margin-bottom:8px;">Pode colar a cifra de outro site direto aqui (formato acorde-em-cima-da-letra) — a conversão pros colchetes acontece automaticamente.</p>
     <textarea id="edit-cifra-text" style="width:100%;min-height:280px;font-family:ui-monospace,monospace;font-size:0.95rem;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);box-sizing:border-box;"></textarea>
     <div style="display:flex;gap:10px;margin-top:10px;">
       <button type="button" onclick="cancelEditCifra()" style="flex:1;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-weight:600;">Cancelar</button>
@@ -295,12 +317,26 @@ function transposeChord(chord, semitones) {
 }
 
 function transposeChordPro(text, semitones) {
-  return text.replace(/\[([^\]]+)\]/g, (_, chord) => "[" + transposeChord(chord, semitones) + "]");
+  // Só transpõe se for acorde de verdade — senão marcadores de estrutura que
+  // começam com letra de nota (ex: "[Break]") viravam acorde por engano.
+  return text.replace(/\[([^\]]+)\]/g, (m, content) => {
+    if (!isChordToken(content)) return m;
+    return "[" + transposeChord(content, semitones) + "]";
+  });
 }
+
+// Acorde de verdade vira badge pequeno; qualquer outra coisa entre colchetes
+// ([Intro], [Solo], [Break], [Repete 2x], [Volta do início]...) é marcador de
+// estrutura e fica destacado num bloco separado, fácil de ver durante o culto.
+const CHORD_RE = /^[A-G](#|b)?(m7b5|m7|m9|m6|m|maj7|maj9|maj|min7|min9|min|dim7|dim|aug|sus4|sus2|sus|add9|add2|add|6|7|9|11|13)?(\/[A-G](#|b)?)?$/;
+function isChordToken(tok) { return CHORD_RE.test(tok.trim()); }
 
 function renderChordProToHTML(text) {
   const escaped = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  return escaped.replace(/\[([^\]]+)\]/g, '<span class="chord">$1</span>');
+  return escaped.replace(/\[([^\]]+)\]/g, (_, content) => {
+    if (isChordToken(content)) return `<span class="chord">${content}</span>`;
+    return `<span class="structure-tag">${content}</span>`;
+  });
 }
 
 function semitonesBetweenKeys(fromKey, toKey) {
@@ -462,6 +498,78 @@ async function deleteSong() {
 }
 
 // ── Editar a cifra direto na tela de visualização ───────────────────────────
+
+// Limpa lixo de HTML que às vezes vem junto quando se copia texto de uma
+// página já renderizada (tags inteiras, ou só o resto de uma tag cortada).
+function sanitizeRaw(text) {
+  return text
+    .replace(/<[^>]*>/g, "")
+    .replace(/"\s*>/g, "")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
+function isChordLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  const tokens = trimmed.split(/\s+/);
+  const hits = tokens.filter(isChordToken).length;
+  return hits / tokens.length >= 0.6;
+}
+
+function mergeChordIntoLyric(chordLine, lyricLine) {
+  const matches = [];
+  const re = /\S+/g;
+  let m;
+  while ((m = re.exec(chordLine)) !== null) matches.push({ text: m[0], col: m.index });
+  let result = lyricLine;
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const insertAt = Math.min(matches[i].col, result.length);
+    result = result.slice(0, insertAt) + `[${matches[i].text}]` + result.slice(insertAt);
+  }
+  return result;
+}
+
+// Detecta se o texto colado já está em ChordPro (colchete perto de letra) ou
+// se é o formato "acorde em cima da linha" — só converte nesse segundo caso,
+// pra não estragar uma cifra que já tinha sido colada certa antes.
+function looksAlreadyBracketed(text) {
+  return (text.match(/\[[^\]]{1,12}\]/g) || []).length >= 2;
+}
+
+function convertCifraText(raw) {
+  const lines = raw.replace(/\r\n/g, "\n").split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (isChordLine(line)) {
+      const next = lines[i + 1];
+      if (next !== undefined && next.trim() !== "" && !isChordLine(next)) {
+        out.push(mergeChordIntoLyric(line, next));
+        i++;
+      } else {
+        out.push(line.trim().split(/\s+/).map(c => `[${c}]`).join(" "));
+      }
+    } else {
+      out.push(line);
+    }
+  }
+  return out.join("\n");
+}
+
+document.getElementById("edit-cifra-text").addEventListener("paste", function (e) {
+  const raw = (e.clipboardData || window.clipboardData).getData("text");
+  if (!raw) return;
+  e.preventDefault();
+  const cleaned = sanitizeRaw(raw);
+  const finalText = looksAlreadyBracketed(cleaned) ? cleaned : convertCifraText(cleaned);
+  const ta = this;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  ta.value = ta.value.slice(0, start) + finalText + ta.value.slice(end);
+  const pos = start + finalText.length;
+  ta.setSelectionRange(pos, pos);
+});
+
 document.querySelectorAll(".tag-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const ta = document.getElementById("edit-cifra-text");

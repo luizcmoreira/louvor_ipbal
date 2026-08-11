@@ -18,12 +18,12 @@
     body { padding:14px; }
   }
   button { margin-top:16px; padding:12px 18px; border-radius:8px; border:none; background:#1e6b3f; color:#ffffff; font-weight:700; font-size:1rem; cursor:pointer; width:100%; }
-  .secondary-btn { background:#ffffff; color:#1c2620; border:1px solid #dde3da; }
-  .paste-box {
-    margin-top:10px; border:1px dashed #b7c2b9; border-radius:10px; padding:12px; background:#eef2ec;
-  }
-  .paste-box textarea { min-height:110px; font-family: ui-monospace, monospace; font-size:0.82rem; }
   .hint { font-size:0.78rem; color:#5c665f; margin-top:6px; }
+  .tag-btn {
+    font-size:0.78rem; font-weight:600; color:#1c2620; background:#eef2ec;
+    border:1px solid #dde3da; border-radius:20px; padding:6px 12px; cursor:pointer;
+  }
+  .tag-btn:active { background:#1e6b3f; color:#fff; }
 </style>
 </head>
 <script src="config.js"></script>
@@ -52,18 +52,22 @@
 <label><input type="checkbox" id="isNew" style="width:auto;display:inline"> É música nova (categoria "Novas")</label>
 
 <label>Cifra (formato ChordPro — acorde colado antes da palavra, entre colchetes)</label>
+<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;margin-bottom:6px;">
+  <button type="button" class="tag-btn" data-tag="[Intro]">Intro</button>
+  <button type="button" class="tag-btn" data-tag="[Solo]">Solo</button>
+  <button type="button" class="tag-btn" data-tag="[Break]">Break</button>
+  <button type="button" class="tag-btn" data-tag="[Repete 2x]">Repetir 2x</button>
+  <button type="button" class="tag-btn" data-tag="[Repete 3x]">Repetir 3x</button>
+  <button type="button" class="tag-btn" data-tag="[Repete 4x]">Repetir 4x</button>
+  <button type="button" class="tag-btn" data-tag="[Repete 8x]">Repetir 8x</button>
+  <button type="button" class="tag-btn" data-tag="[Volta do início]">Voltar do início</button>
+</div>
+<p class="hint" style="margin-bottom:6px;">Pode colar a cifra de outro site direto aqui (formato acorde-em-cima-da-letra) — a conversão pros colchetes acontece automaticamente.</p>
 <textarea id="chordpro" placeholder="[G]Te agradeço [D]Senhor
 [Em]Por tudo o [C]que fizeste"></textarea>
 
-<div class="paste-box">
-  <label style="margin-top:0;">Colar cifra de outro site (formato acorde-em-cima-da-letra)</label>
-  <textarea id="raw-cifra" placeholder="       G          D
-Te agradeço, Senhor"></textarea>
-  <button type="button" class="secondary-btn" onclick="converterCifra()">Converter pro campo acima</button>
-  <p class="hint">Tenta juntar automaticamente o acorde com a sílaba de baixo. Não sai perfeito sempre — depois de converter, ajuste à mão o que precisar ali em cima.</p>
-</div>
-
 <button onclick="salvar()" id="save-btn">Salvar música</button>
+<button onclick="excluir()" id="delete-btn" style="display:none;background:none;color:#b23f3f;font-weight:600;margin-top:10px;">Excluir música</button>
 <p id="msg" style="text-align:center;font-size:0.85rem;margin-top:10px;"></p>
 
 <script>
@@ -75,6 +79,7 @@ async function initEdit() {
   if (!editingTitle) return;
   document.getElementById("page-title").textContent = "Editar música";
   document.getElementById("save-btn").textContent = "Salvar alterações";
+  document.getElementById("delete-btn").style.display = "block";
   try {
     const res = await fetch(API_URL + "?sheet=Musicas", { cache: "no-store" });
     const songs = await res.json();
@@ -94,6 +99,43 @@ async function initEdit() {
   }
 }
 initEdit();
+
+document.querySelectorAll(".tag-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const ta = document.getElementById("chordpro");
+    const tag = btn.dataset.tag;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const before = ta.value.slice(0, start), after = ta.value.slice(end);
+    const needsNewlineBefore = before.length > 0 && !before.endsWith("\n");
+    const insert = (needsNewlineBefore ? "\n" : "") + tag + "\n";
+    ta.value = before + insert + after;
+    const pos = (before + insert).length;
+    ta.focus();
+    ta.setSelectionRange(pos, pos);
+  });
+});
+
+async function excluir() {
+  if (!editingTitle) return;
+  if (!confirm(`Excluir "${editingTitle}"? Isso apaga a linha na planilha, não tem como desfazer.`)) return;
+  const btn = document.getElementById('delete-btn');
+  const msg = document.getElementById('msg');
+  btn.disabled = true; btn.textContent = "Excluindo…";
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "deleteMusica", title: editingTitle }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao excluir");
+    location.href = "cifras.html";
+  } catch (e) {
+    msg.style.color = "#b23f3f";
+    msg.textContent = "Não deu pra excluir: " + e.message;
+    btn.disabled = false; btn.textContent = "Excluir música";
+  }
+}
 
 async function salvar() {
   const title = document.getElementById('title').value.trim();
@@ -169,9 +211,11 @@ function sanitizeRaw(text) {
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 }
 
-function converterCifra() {
-  const raw = sanitizeRaw(document.getElementById('raw-cifra').value);
-  if (!raw.trim()) return;
+function looksAlreadyBracketed(text) {
+  return (text.match(/\[[^\]]{1,12}\]/g) || []).length >= 2;
+}
+
+function convertCifraText(raw) {
   const lines = raw.replace(/\r\n/g, "\n").split("\n");
   const out = [];
   for (let i = 0; i < lines.length; i++) {
@@ -188,8 +232,21 @@ function converterCifra() {
       out.push(line);
     }
   }
-  document.getElementById('chordpro').value = out.join("\n");
+  return out.join("\n");
 }
+
+document.getElementById("chordpro").addEventListener("paste", function (e) {
+  const raw = (e.clipboardData || window.clipboardData).getData("text");
+  if (!raw) return;
+  e.preventDefault();
+  const cleaned = sanitizeRaw(raw);
+  const finalText = looksAlreadyBracketed(cleaned) ? cleaned : convertCifraText(cleaned);
+  const ta = this;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  ta.value = ta.value.slice(0, start) + finalText + ta.value.slice(end);
+  const pos = start + finalText.length;
+  ta.setSelectionRange(pos, pos);
+});
 </script>
 </body>
 </html>
