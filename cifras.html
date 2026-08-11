@@ -139,6 +139,11 @@
     transition: all .15s ease;
   }
   .links-row a:active { background: var(--accent); color: var(--accent-on); }
+  .tag-btn {
+    font-size: 0.78rem; font-weight: 600; color: var(--text); background: var(--card-2);
+    border: 1px solid var(--border); border-radius: 20px; padding: 6px 12px; cursor: pointer;
+  }
+  .tag-btn:active { background: var(--accent); color: var(--accent-on); }
 
   .cifra {
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
@@ -205,8 +210,30 @@
   </div>
 
   <div class="links-row" id="v-links"></div>
+  <div class="links-row">
+    <a href="#" onclick="toggleEditCifra(); return false;" id="edit-cifra-toggle">✏️ Editar cifra</a>
+  </div>
 
   <div class="cifra" id="v-cifra"></div>
+
+  <div id="edit-cifra-box" style="display:none;">
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+      <button type="button" class="tag-btn" data-tag="[Intro]">Intro</button>
+      <button type="button" class="tag-btn" data-tag="[Solo]">Solo</button>
+      <button type="button" class="tag-btn" data-tag="[Break]">Break</button>
+      <button type="button" class="tag-btn" data-tag="(repete 2x)">Repetir 2x</button>
+      <button type="button" class="tag-btn" data-tag="(repete 3x)">Repetir 3x</button>
+      <button type="button" class="tag-btn" data-tag="(repete 4x)">Repetir 4x</button>
+      <button type="button" class="tag-btn" data-tag="(repete 8x)">Repetir 8x</button>
+      <button type="button" class="tag-btn" data-tag="(volta do início)">Voltar do início</button>
+    </div>
+    <textarea id="edit-cifra-text" style="width:100%;min-height:280px;font-family:ui-monospace,monospace;font-size:0.95rem;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);box-sizing:border-box;"></textarea>
+    <div style="display:flex;gap:10px;margin-top:10px;">
+      <button type="button" onclick="cancelEditCifra()" style="flex:1;padding:11px;border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--text);font-weight:600;">Cancelar</button>
+      <button type="button" onclick="saveEditCifra()" id="save-cifra-btn" style="flex:1;padding:11px;border-radius:12px;border:none;background:var(--accent);color:var(--accent-on);font-weight:700;">Salvar</button>
+    </div>
+    <p id="edit-cifra-msg" style="font-size:0.8rem;text-align:center;margin-top:8px;"></p>
+  </div>
 
   <button onclick="deleteSong()" style="margin-top:20px;width:100%;background:none;border:none;color:#b23f3f;font-size:0.82rem;font-weight:600;padding:10px;cursor:pointer;">Excluir música</button>
 </div>
@@ -369,8 +396,8 @@ function renderList() {
         return b;
       }
 
-      if (song.videoCompleta) actionsRow.appendChild(actionPill("▶ Completa", "Vídeo — versão completa", () => window.open(song.videoCompleta, "_blank")));
-      if (song.videoCongregacional) actionsRow.appendChild(actionPill("🎤 Congreg.", "Vídeo — versão congregacional", () => window.open(song.videoCongregacional, "_blank")));
+      if (song.videoCompleta) actionsRow.appendChild(actionPill("▶ Versão completa", "Vídeo — versão completa", () => window.open(song.videoCompleta, "_blank")));
+      if (song.videoCongregacional) actionsRow.appendChild(actionPill("🎤 Versão congregacional", "Vídeo — versão congregacional", () => window.open(song.videoCongregacional, "_blank")));
       actionsRow.appendChild(actionPill("✏️ Editar", "Editar esta música", () => location.href = "admin.html?title=" + encodeURIComponent(song.title)));
 
       statusWrap.appendChild(actionsRow);
@@ -404,6 +431,7 @@ function openSong(idx) {
   if (current.videoCompleta) linksRow.innerHTML += `<a href="${current.videoCompleta}" target="_blank">▶ Versão completa</a>`;
   if (current.videoCongregacional) linksRow.innerHTML += `<a href="${current.videoCongregacional}" target="_blank">🎤 Versão congregacional</a>`;
 
+  cancelEditCifra();
   updateView();
 }
 
@@ -430,6 +458,63 @@ async function deleteSong() {
     renderList();
   } catch (e) {
     alert("Não deu pra excluir agora (" + e.message + "). Tenta de novo.");
+  }
+}
+
+// ── Editar a cifra direto na tela de visualização ───────────────────────────
+document.querySelectorAll(".tag-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const ta = document.getElementById("edit-cifra-text");
+    const tag = btn.dataset.tag;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const before = ta.value.slice(0, start), after = ta.value.slice(end);
+    const needsNewlineBefore = before.length > 0 && !before.endsWith("\n");
+    const insert = (needsNewlineBefore ? "\n" : "") + tag + "\n";
+    ta.value = before + insert + after;
+    const pos = (before + insert).length;
+    ta.focus();
+    ta.setSelectionRange(pos, pos);
+  });
+});
+
+function toggleEditCifra() {
+  if (!current) return;
+  document.getElementById("v-cifra").style.display = "none";
+  document.getElementById("edit-cifra-toggle").style.display = "none";
+  document.getElementById("edit-cifra-box").style.display = "block";
+  document.getElementById("edit-cifra-text").value = current.chordpro || "";
+  document.getElementById("edit-cifra-msg").textContent = "";
+}
+
+function cancelEditCifra() {
+  document.getElementById("v-cifra").style.display = "block";
+  document.getElementById("edit-cifra-toggle").style.display = "inline-block";
+  document.getElementById("edit-cifra-box").style.display = "none";
+}
+
+async function saveEditCifra() {
+  const newChordpro = document.getElementById("edit-cifra-text").value;
+  const btn = document.getElementById("save-cifra-btn");
+  const msg = document.getElementById("edit-cifra-msg");
+  btn.disabled = true; btn.textContent = "Salvando…";
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "updateMusica", matchTitle: current.title, chordpro: newChordpro }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao salvar");
+    current.chordpro = newChordpro;
+    const song = SONGS.find(s => s.title === current.title);
+    if (song) song.chordpro = newChordpro;
+    updateView();
+    cancelEditCifra();
+  } catch (e) {
+    msg.style.color = "#b23f3f";
+    msg.textContent = "Não deu pra salvar: " + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Salvar";
   }
 }
 
