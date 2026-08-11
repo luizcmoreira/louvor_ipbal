@@ -29,7 +29,7 @@
 <script src="config.js"></script>
 <body>
 <a class="home-link" href="index.html">← Início</a>
-<h1>Gerador de bloco de música</h1>
+<h1 id="page-title">Cadastrar música</h1>
 
 <label>Título</label>
 <input id="title" placeholder="Ex: Te agradeço">
@@ -38,9 +38,9 @@
 <input id="key" placeholder="Ex: G, Am, D">
 
 <div class="row3">
-  <div><label>Cantor 1</label><input id="s1n" placeholder="Nome"><input id="s1t" placeholder="Tom" style="margin-top:6px"></div>
-  <div><label>Cantor 2</label><input id="s2n" placeholder="Nome"><input id="s2t" placeholder="Tom" style="margin-top:6px"></div>
-  <div><label>Cantor 3</label><input id="s3n" placeholder="Nome"><input id="s3t" placeholder="Tom" style="margin-top:6px"></div>
+  <div><label>Tom — Ricardo</label><input id="s1t" placeholder="Ex: G"></div>
+  <div><label>Tom — Kariny</label><input id="s2t" placeholder="Ex: G"></div>
+  <div><label>Tom — Luiz</label><input id="s3t" placeholder="Ex: C"></div>
 </div>
 
 <label>Vídeo — versão completa (YouTube)</label>
@@ -67,22 +67,45 @@ Te agradeço, Senhor"></textarea>
 <p id="msg" style="text-align:center;font-size:0.85rem;margin-top:10px;"></p>
 
 <script>
+// Modo edição: chegando com ?title=X, pré-preenche tudo com o que já está
+// salvo e troca "Cadastrar" (addMusica) por "Salvar alterações" (updateMusica).
+const editingTitle = new URLSearchParams(location.search).get("title");
+
+async function initEdit() {
+  if (!editingTitle) return;
+  document.getElementById("page-title").textContent = "Editar música";
+  document.getElementById("save-btn").textContent = "Salvar alterações";
+  try {
+    const res = await fetch(API_URL + "?sheet=Musicas", { cache: "no-store" });
+    const songs = await res.json();
+    const song = songs.find(s => s.title === editingTitle);
+    if (!song) { document.getElementById("msg").textContent = "Música não encontrada."; return; }
+    document.getElementById("title").value = song.title;
+    document.getElementById("key").value = song.originalKey || "";
+    document.getElementById("s1t").value = song.presets?.Ricardo || "";
+    document.getElementById("s2t").value = song.presets?.Kariny || "";
+    document.getElementById("s3t").value = song.presets?.Luiz || "";
+    document.getElementById("chordpro").value = song.chordpro || "";
+    document.getElementById("isNew").checked = !!song.isNew;
+    document.getElementById("videoCompleta").value = song.videoCompleta || "";
+    document.getElementById("videoCongregacional").value = song.videoCongregacional || "";
+  } catch (e) {
+    document.getElementById("msg").textContent = "Não consegui carregar a música pra editar.";
+  }
+}
+initEdit();
+
 async function salvar() {
   const title = document.getElementById('title').value.trim();
   if (!title) { alert("Preenche o título."); return; }
-  const presets = {};
-  [["s1n","s1t"],["s2n","s2t"],["s3n","s3t"]].forEach(([n,t]) => {
-    const name = document.getElementById(n).value.trim();
-    const tone = document.getElementById(t).value.trim();
-    if (name && tone) presets[name] = tone;
-  });
   const payload = {
-    action: "addMusica",
+    action: editingTitle ? "updateMusica" : "addMusica",
+    matchTitle: editingTitle,
     title,
     originalKey: document.getElementById('key').value,
-    tom_Ricardo: presets["Ricardo"] || "",
-    tom_Kariny: presets["Kariny"] || "",
-    tom_Luiz: presets["Luiz"] || "",
+    tom_Ricardo: document.getElementById('s1t').value.trim(),
+    tom_Kariny: document.getElementById('s2t').value.trim(),
+    tom_Luiz: document.getElementById('s3t').value.trim(),
     chordpro: document.getElementById('chordpro').value,
     isNew: document.getElementById('isNew').checked,
     videoCompleta: document.getElementById('videoCompleta').value,
@@ -105,7 +128,7 @@ async function salvar() {
   } catch (e) {
     msg.style.color = "#b23f3f";
     msg.textContent = "Não deu pra salvar: " + e.message;
-    btn.disabled = false; btn.textContent = "Salvar música";
+    btn.disabled = false; btn.textContent = editingTitle ? "Salvar alterações" : "Salvar música";
   }
 }
 

@@ -358,21 +358,22 @@ function renderList() {
       statusWrap.style.cssText = "display:flex;flex-direction:column;align-items:flex-end;gap:6px;";
       statusWrap.appendChild(statusBtn);
 
-      if (song.videoCompleta) {
-        const yt = document.createElement("button");
-        yt.className = "yt-icon"; yt.style.width = "28px"; yt.style.height = "28px"; yt.style.fontSize = "0.75rem";
-        yt.textContent = "▶"; yt.title = "Vídeo — versão completa";
-        yt.onclick = (ev) => { ev.stopPropagation(); window.open(song.videoCompleta, "_blank"); };
-        statusWrap.appendChild(yt);
-      }
-      if (song.videoCongregacional) {
-        const yt = document.createElement("button");
-        yt.className = "yt-icon"; yt.style.width = "28px"; yt.style.height = "28px"; yt.style.fontSize = "0.75rem";
-        yt.textContent = "🎤"; yt.title = "Vídeo — versão congregacional";
-        yt.onclick = (ev) => { ev.stopPropagation(); window.open(song.videoCongregacional, "_blank"); };
-        statusWrap.appendChild(yt);
+      const actionsRow = document.createElement("div");
+      actionsRow.style.cssText = "display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px;";
+
+      function actionPill(text, title, onclick) {
+        const b = document.createElement("button");
+        b.textContent = text; b.title = title;
+        b.style.cssText = "font-size:0.68rem;font-weight:600;color:var(--muted);background:var(--card-2);border:1px solid var(--border);border-radius:20px;padding:4px 9px;cursor:pointer;white-space:nowrap;";
+        b.onclick = (ev) => { ev.stopPropagation(); onclick(); };
+        return b;
       }
 
+      if (song.videoCompleta) actionsRow.appendChild(actionPill("▶ Completa", "Vídeo — versão completa", () => window.open(song.videoCompleta, "_blank")));
+      if (song.videoCongregacional) actionsRow.appendChild(actionPill("🎤 Congreg.", "Vídeo — versão congregacional", () => window.open(song.videoCongregacional, "_blank")));
+      actionsRow.appendChild(actionPill("✏️ Editar", "Editar esta música", () => location.href = "admin.html?title=" + encodeURIComponent(song.title)));
+
+      statusWrap.appendChild(actionsRow);
       el.appendChild(statusWrap);
       list.appendChild(el);
     });
