@@ -158,8 +158,19 @@ function mergeChordIntoLyric(chordLine, lyricLine) {
   return result;
 }
 
+// Limpa lixo de HTML que às vezes vem junto quando se copia texto de uma
+// página já renderizada (tags inteiras, ou só o resto de uma tag cortada
+// tipo `">G`, sobra de `<span class="chord">G</span>`).
+function sanitizeRaw(text) {
+  return text
+    .replace(/<[^>]*>/g, "")
+    .replace(/"\s*>/g, "")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+}
+
 function converterCifra() {
-  const raw = document.getElementById('raw-cifra').value;
+  const raw = sanitizeRaw(document.getElementById('raw-cifra').value);
   if (!raw.trim()) return;
   const lines = raw.replace(/\r\n/g, "\n").split("\n");
   const out = [];
