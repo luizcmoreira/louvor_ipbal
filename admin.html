@@ -13,8 +13,11 @@
   input, textarea, select { width:100%; padding:9px; border-radius:8px; border:1px solid #dde3da; background:#ffffff; color:#1c2620; font-size:0.95rem; box-sizing:border-box; }
   input:focus, textarea:focus, select:focus { outline:none; border-color:#1e6b3f; box-shadow:0 0 0 3px rgba(30,107,63,0.15); }
   textarea { min-height:140px; font-family: ui-monospace, monospace; }
-  .row3 { display:flex; gap:8px; }
-  .row3 > div { flex:1; }
+  .row3 { display:flex; gap:8px; flex-wrap:wrap; }
+  .row3 > div { flex:1 1 140px; }
+  @media (max-width: 420px) {
+    body { padding:14px; }
+  }
   button { margin-top:16px; padding:12px 18px; border-radius:8px; border:none; background:#1e6b3f; color:#ffffff; font-weight:700; font-size:1rem; cursor:pointer; width:100%; }
   #out { margin-top:16px; white-space:pre-wrap; background:#eef2ec; border:1px solid #dde3da; border-radius:8px; padding:12px; font-family: ui-monospace, monospace; font-size:0.85rem; }
   .copybtn { background:#ffffff; color:#1c2620; border:1px solid #dde3da; margin-top:8px; }
@@ -42,7 +45,7 @@
 
 <label>Link da cifra completa (Cifra Club, Cifra Clube, etc. — opcional)</label>
 <input id="drive" placeholder="https://www.cifraclub.com.br/...">
-<p style="color:#9aa1ac;font-size:0.78rem;margin-top:4px;">O site de destino já transpõe o tom de graça — não precisa colar a letra aqui embaixo se preferir só linkar.</p>
+<p style="color:#5c665f;font-size:0.78rem;margin-top:4px;">O site de destino já transpõe o tom de graça — não precisa colar a letra aqui embaixo se preferir só linkar.</p>
 <label>Status</label>
 <select id="status">
   <option value="bem">Bem ensaiada (verde)</option>
