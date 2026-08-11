@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escala — Ministério de Louvor</title>
+<style>
+  :root {
+    --bg: #f5f7f4; --card: #ffffff; --card-2: #eef2ec; --text: #1c2620; --muted: #5c665f;
+    --accent: #1e6b3f; --accent-on: #ffffff; --border: #dde3da;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); padding-bottom:40px; }
+  header { padding:14px 16px 12px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:6px; }
+  .home-link { display:inline-flex; align-items:center; gap:4px; color:var(--accent); text-decoration:none; font-size:0.82rem; font-weight:700; }
+  .header-row { display:flex; align-items:center; justify-content:space-between; }
+  h1 { font-size:1.05rem; margin:0; }
+  .add-link { font-size:0.82rem; font-weight:700; color:var(--accent); text-decoration:none; border:1px solid var(--border); padding:6px 12px; border-radius:20px; }
+  main { padding:16px; display:flex; flex-direction:column; gap:14px; max-width:520px; margin:0 auto; }
+  .culto {
+    background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px;
+    box-shadow:0 1px 3px rgba(20,30,20,0.05);
+  }
+  .culto-date { font-size:0.78rem; font-weight:700; color:var(--accent); text-transform:capitalize; }
+  .culto-label { font-size:1.02rem; font-weight:700; margin:2px 0 12px; }
+  .role-row { display:flex; gap:8px; margin-bottom:6px; font-size:0.85rem; }
+  .role-tag { font-weight:700; color:var(--muted); flex-shrink:0; width:78px; }
+  .role-val { color:var(--text); }
+  .rep-list { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); display:flex; flex-wrap:wrap; gap:6px; }
+  .rep-pill {
+    font-size:0.8rem; font-weight:600; color:var(--accent); background:rgba(30,107,63,0.08);
+    border-radius:20px; padding:5px 12px; text-decoration:none;
+  }
+  .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:40px 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home-link" href="index.html">← Início</a>
+  <div class="header-row">
+    <h1>Escala</h1>
+    <a class="add-link" href="admin-escala.html">+ Novo culto</a>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<script>
+async function load() {
+  const main = document.getElementById("main");
+  let escala, songs;
+  try {
+    [escala, songs] = await Promise.all([
+      fetch("escala.json", { cache: "no-store" }).then(r => r.json()),
+      fetch("dados.json", { cache: "no-store" }).then(r => r.json()),
+    ]);
+  } catch (e) {
+    main.innerHTML = "<p style='color:#b23f3f'>Não consegui carregar a escala.</p>";
+    return;
+  }
+
+  if (escala.length === 0) {
+    main.innerHTML = `<p class="empty">Nenhum culto na escala ainda.<br><a class="add-link" href="admin-escala.html" style="display:inline-block;margin-top:12px;">+ Adicionar o primeiro</a></p>`;
+    return;
+  }
+
+  const byTitle = Object.fromEntries(songs.map(s => [s.title, s]));
+  const sorted = [...escala].sort((a, b) => a.date.localeCompare(b.date));
+
+  main.innerHTML = sorted.map(c => {
+    const dateLabel = new Date(c.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+    const rep = (c.repertorio || []).map(title => {
+      const song = byTitle[title];
+      const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "") : "";
+      const href = `cifras.html?song=${encodeURIComponent(title)}&singer=${encodeURIComponent(c.ministro || "")}`;
+      return `<a class="rep-pill" href="${href}">${title}${tone ? " · " + tone : ""}</a>`;
+    }).join("");
+    return `
+      <div class="culto">
+        <div class="culto-date">${dateLabel}</div>
+        <div class="culto-label">${c.label || ""}</div>
+        <div class="role-row"><span class="role-tag">Ministro</span><span class="role-val">${c.ministro || "—"}</span></div>
+        <div class="role-row"><span class="role-tag">Músicos</span><span class="role-val">${(c.musicos || []).join(", ") || "—"}</span></div>
+        <div class="role-row"><span class="role-tag">Backing</span><span class="role-val">${(c.vocalBacking || []).join(", ") || "—"}</span></div>
+        ${rep ? `<div class="rep-list">${rep}</div>` : ""}
+      </div>`;
+  }).join("");
+}
+load();
+</script>
+</body>
+</html>

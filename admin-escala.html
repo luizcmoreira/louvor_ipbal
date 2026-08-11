@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Nova escala (uso pessoal)</title>
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; background:#f5f7f4; color:#1c2620; padding:16px; max-width:640px; margin:0 auto; }
+  .home-link { display:inline-flex; align-items:center; gap:4px; color:#1e6b3f; text-decoration:none; font-size:0.82rem; font-weight:700; }
+  h1 { font-size:1.1rem; margin-top:14px; }
+  label { display:block; margin-top:14px; font-size:0.85rem; color:#5c665f; }
+  input, select { width:100%; padding:9px; border-radius:8px; border:1px solid #dde3da; background:#ffffff; color:#1c2620; font-size:0.95rem; box-sizing:border-box; }
+  input:focus, select:focus { outline:none; border-color:#1e6b3f; box-shadow:0 0 0 3px rgba(30,107,63,0.15); }
+  .check-grid { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .check-grid label {
+    display:flex; align-items:center; gap:6px; margin-top:0; font-size:0.88rem; color:#1c2620;
+    border:1px solid #dde3da; border-radius:20px; padding:7px 12px; background:#ffffff; cursor:pointer;
+  }
+  .check-grid input { width:auto; }
+  button { margin-top:18px; padding:12px 18px; border-radius:8px; border:none; background:#1e6b3f; color:#ffffff; font-weight:700; font-size:1rem; cursor:pointer; width:100%; }
+  #out { margin-top:16px; white-space:pre-wrap; background:#eef2ec; border:1px solid #dde3da; border-radius:8px; padding:12px; font-family: ui-monospace, monospace; font-size:0.85rem; }
+  .copybtn { background:#ffffff; color:#1c2620; border:1px solid #dde3da; margin-top:8px; }
+  .hint { font-size:0.78rem; color:#5c665f; margin-top:4px; }
+</style>
+</head>
+<body>
+<a class="home-link" href="escala.html">← Escala</a>
+<h1>Adicionar culto na escala</h1>
+
+<label>Data</label>
+<input type="date" id="date">
+
+<label>Descrição</label>
+<input id="label" placeholder="Ex: Culto de domingo à noite">
+
+<label>Ministro (voz principal)</label>
+<select id="ministro"></select>
+
+<label>Músicos</label>
+<div class="check-grid" id="musicos"></div>
+
+<label>Vocal (backing)</label>
+<div class="check-grid" id="backing"></div>
+
+<label>Repertório</label>
+<div class="check-grid" id="repertorio"></div>
+<p class="hint">O tom mostrado na Escala/Ensaios é o do ministro selecionado acima (ou o tom original, se não houver preset dele pra essa música).</p>
+
+<button onclick="gerar()">Gerar bloco</button>
+
+<div id="out" style="display:none"></div>
+<button class="copybtn" id="copybtn" style="display:none" onclick="copiar()">Copiar</button>
+
+<script>
+let people = [], songs = [];
+
+async function init() {
+  [people, songs] = await Promise.all([
+    fetch("participantes.json", { cache: "no-store" }).then(r => r.json()),
+    fetch("dados.json", { cache: "no-store" }).then(r => r.json()),
+  ]);
+
+  const ministros = people.filter(p => p.vocal === "ministro" || p.vocal === "ministra");
+  document.getElementById("ministro").innerHTML = ministros.map(p => `<option value="${p.name}">${p.name}</option>`).join("");
+
+  const musicos = people.filter(p => (p.instrumentos || []).length > 0);
+  document.getElementById("musicos").innerHTML = musicos.map(p =>
+    `<label><input type="checkbox" value="${p.name}" class="musico-cb"> ${p.name}</label>`).join("");
+
+  const backing = people.filter(p => p.vocal === "backing");
+  document.getElementById("backing").innerHTML = backing.map(p =>
+    `<label><input type="checkbox" value="${p.name}" class="backing-cb"> ${p.name}</label>`).join("");
+
+  document.getElementById("repertorio").innerHTML = songs.map(s =>
+    `<label><input type="checkbox" value="${s.title}" class="rep-cb"> ${s.title}</label>`).join("");
+}
+init();
+
+function esc(s) { return (s || "").replace(/\\/g,"\\\\").replace(/"/g,'\\"'); }
+function checked(cls) { return [...document.querySelectorAll("." + cls + ":checked")].map(el => el.value); }
+
+function gerar() {
+  const entry = {
+    date: document.getElementById("date").value,
+    label: document.getElementById("label").value,
+    ministro: document.getElementById("ministro").value,
+    musicos: checked("musico-cb"),
+    vocalBacking: checked("backing-cb"),
+    repertorio: checked("rep-cb"),
+  };
+  const block = "  " + JSON.stringify(entry) + ",";
+  const out = document.getElementById("out");
+  out.textContent = block;
+  out.style.display = "block";
+  document.getElementById("copybtn").style.display = "block";
+}
+
+function copiar() {
+  navigator.clipboard.writeText(document.getElementById("out").textContent);
+  document.getElementById("copybtn").textContent = "Copiado!";
+  setTimeout(() => document.getElementById("copybtn").textContent = "Copiar", 1500);
+}
+</script>
+</body>
+</html>

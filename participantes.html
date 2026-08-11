@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Participantes — Ministério de Louvor</title>
+<style>
+  :root {
+    --bg: #f5f7f4; --card: #ffffff; --card-2: #eef2ec; --text: #1c2620; --muted: #5c665f;
+    --accent: #1e6b3f; --accent-on: #ffffff; --border: #dde3da;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); padding-bottom:40px; }
+  header { padding:14px 16px 12px; border-bottom:1px solid var(--border); }
+  .home-link { display:inline-flex; align-items:center; gap:4px; color:var(--accent); text-decoration:none; font-size:0.82rem; font-weight:700; margin-bottom:10px; }
+  h1 { font-size:1.05rem; margin:0; }
+  main { padding:16px; display:flex; flex-direction:column; gap:22px; max-width:520px; margin:0 auto; }
+  section h2 { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin:0 0 10px; }
+  .person-list { display:flex; flex-direction:column; gap:8px; }
+  .person {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    padding:12px 14px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(20,30,20,0.05);
+  }
+  .avatar {
+    width:38px; height:38px; border-radius:50%; background:var(--card-2); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.95rem; flex-shrink:0;
+  }
+  .person-name { font-weight:700; font-size:0.98rem; }
+  .person-role { font-size:0.82rem; color:var(--muted); margin-top:1px; }
+  .badge {
+    margin-left:auto; font-size:0.7rem; font-weight:700; padding:3px 9px; border-radius:20px;
+    background:rgba(30,107,63,0.10); color:var(--accent); white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home-link" href="index.html">← Início</a>
+  <h1>Participantes</h1>
+</header>
+
+<main id="main"></main>
+
+<script>
+async function load() {
+  const main = document.getElementById("main");
+  let people;
+  try {
+    const res = await fetch("participantes.json", { cache: "no-store" });
+    people = await res.json();
+  } catch (e) {
+    main.innerHTML = "<p style='color:#b23f3f'>Não consegui carregar participantes.json.</p>";
+    return;
+  }
+
+  const initials = (name) => name.trim().slice(0, 2).toUpperCase();
+
+  const ministros = people.filter(p => p.vocal === "ministro" || p.vocal === "ministra");
+  const backing = people.filter(p => p.vocal === "backing");
+  const musicos = people.filter(p => (p.instrumentos || []).length > 0);
+
+  function section(title, list, roleFn) {
+    if (list.length === 0) return "";
+    const items = list.map(p => `
+      <div class="person">
+        <div class="avatar">${initials(p.name)}</div>
+        <div>
+          <div class="person-name">${p.name}</div>
+          <div class="person-role">${roleFn(p)}</div>
+        </div>
+      </div>`).join("");
+    return `<section><h2>${title}</h2><div class="person-list">${items}</div></section>`;
+  }
+
+  main.innerHTML =
+    section("Ministros de louvor", ministros, p => p.vocal === "ministro" ? "Vocal (Ministro)" : "Vocal (Ministra)") +
+    section("Vocal (backing)", backing, () => "Vocal") +
+    section("Músicos", musicos, p => (p.instrumentos || []).join(", "));
+}
+load();
+</script>
+</body>
+</html>

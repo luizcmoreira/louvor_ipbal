@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ensaios — Ministério de Louvor</title>
+<style>
+  :root {
+    --bg: #f5f7f4; --card: #ffffff; --card-2: #eef2ec; --text: #1c2620; --muted: #5c665f;
+    --accent: #1e6b3f; --accent-on: #ffffff; --border: #dde3da;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); padding-bottom:40px; }
+  header { padding:14px 16px 12px; border-bottom:1px solid var(--border); }
+  .home-link { display:inline-flex; align-items:center; gap:4px; color:var(--accent); text-decoration:none; font-size:0.82rem; font-weight:700; margin-bottom:10px; }
+  h1 { font-size:1.05rem; margin:0; }
+  main { padding:16px; display:flex; flex-direction:column; gap:16px; max-width:520px; margin:0 auto; }
+  .culto {
+    background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px;
+    box-shadow:0 1px 3px rgba(20,30,20,0.05);
+  }
+  .culto-date { font-size:0.78rem; font-weight:700; color:var(--accent); text-transform:capitalize; }
+  .culto-label { font-size:1.08rem; font-weight:700; margin:2px 0 14px; }
+
+  .escala-strip { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .escala-chip {
+    font-size:0.76rem; background:var(--card-2); color:var(--muted); border-radius:8px;
+    padding:5px 10px; line-height:1.4;
+  }
+  .escala-chip b { color:var(--text); }
+
+  .rep-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin-bottom:8px; }
+  .rep-item {
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 14px; border:1px solid var(--border); border-radius:12px; margin-bottom:8px;
+    text-decoration:none; color:var(--text);
+  }
+  .rep-item-title { font-weight:600; font-size:0.95rem; }
+  .rep-item-tone { font-size:0.85rem; font-weight:700; color:var(--accent); flex-shrink:0; }
+  .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:40px 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="home-link" href="index.html">← Início</a>
+  <h1>Ensaios — próximos cultos</h1>
+</header>
+
+<main id="main"></main>
+
+<script>
+async function load() {
+  const main = document.getElementById("main");
+  let escala, songs;
+  try {
+    [escala, songs] = await Promise.all([
+      fetch("escala.json", { cache: "no-store" }).then(r => r.json()),
+      fetch("dados.json", { cache: "no-store" }).then(r => r.json()),
+    ]);
+  } catch (e) {
+    main.innerHTML = "<p style='color:#b23f3f'>Não consegui carregar os ensaios.</p>";
+    return;
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcoming = escala.filter(c => c.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date));
+
+  if (upcoming.length === 0) {
+    main.innerHTML = `<p class="empty">Nenhum culto futuro na escala.<br>Cadastre em <a href="admin-escala.html">Escala</a>.</p>`;
+    return;
+  }
+
+  const byTitle = Object.fromEntries(songs.map(s => [s.title, s]));
+
+  main.innerHTML = upcoming.map(c => {
+    const dateLabel = new Date(c.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+
+    const chips = [
+      c.ministro ? `<span class="escala-chip"><b>${c.ministro}</b> — Ministro</span>` : "",
+      ...(c.musicos || []).map(m => `<span class="escala-chip"><b>${m}</b> — Músico</span>`),
+      ...(c.vocalBacking || []).map(m => `<span class="escala-chip"><b>${m}</b> — Backing</span>`),
+    ].filter(Boolean).join("");
+
+    const rep = (c.repertorio || []).map(title => {
+      const song = byTitle[title];
+      const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "?") : "?";
+      const href = `cifras.html?song=${encodeURIComponent(title)}&singer=${encodeURIComponent(c.ministro || "")}`;
+      return `<a class="rep-item" href="${href}"><span class="rep-item-title">${title}</span><span class="rep-item-tone">${tone}</span></a>`;
+    }).join("");
+
+    return `
+      <div class="culto">
+        <div class="culto-date">${dateLabel}</div>
+        <div class="culto-label">${c.label || ""}</div>
+        ${chips ? `<div class="escala-strip">${chips}</div>` : ""}
+        ${rep ? `<div class="rep-title">Repertório</div>${rep}` : `<p style="color:var(--muted);font-size:0.85rem;">Repertório ainda não definido.</p>`}
+      </div>`;
+  }).join("");
+}
+load();
+</script>
+</body>
+</html>

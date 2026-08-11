@@ -215,12 +215,12 @@
    - title: nome da música
    - originalKey: tom original (ex: "G", "Am", "D"). Deixe "" se ainda não souber.
    - presets: tom de cada cantor nessa música (ex: { Ricardo: "G", Karine: "G", "Luís": "C" })
-   - video: link de referência (opcional, pode deixar "")
-   - cifraLink: link para a cifra completa em site externo (Cifra Club, Cifra Clube, etc.),
-     onde o próprio site já transpõe de graça. Deixe "" se ainda não tiver.
+   - videoCompleta: link de referência da versão completa (opcional, pode deixar "")
+   - videoCongregacional: link de referência da versão congregacional (opcional, pode deixar "")
    - chordpro: a letra com os acordes colados entre colchetes, ex: "[G]Te agradeço [D]Senhor"
      use \n para quebra de linha dentro da string. Deixe "" se ainda não cadastrou.
-   - status: "bem" (verde), "mal" (amarelo) ou "nao" (vermelho, ainda não ensaiada)
+   - status: "bem" (verde), "mal" (amarelo) ou "nao" (vermelho, ainda não ensaiada) —
+     muda tocando no rótulo de status direto na lista (não precisa editar aqui).
    - isNew: true para músicas novas sendo inseridas/testadas, false para repertório fixo
 
    Dica: em vez de editar isso na mão, use o admin.html — ele gera o bloco pronto
@@ -296,6 +296,40 @@ function setFilter(f) {
   renderList();
 }
 
+const STATUS_ORDER = ["nao", "mal", "bem"];
+const STATUS_TEXT = { bem: "Bem ensaiada", mal: "Mal ensaiada", nao: "Não ensaiada" };
+const STATUS_CLASS = { bem: "st-bem", mal: "st-mal", nao: "st-nao" };
+let dirty = false; // true depois de mudar algum status na tela, sem ainda ter sido salvo no dados.json
+
+function cycleStatus(realIdx, ev) {
+  ev.stopPropagation();
+  const song = SONGS[realIdx];
+  const i = STATUS_ORDER.indexOf(song.status || "nao");
+  song.status = STATUS_ORDER[(i + 1) % STATUS_ORDER.length];
+  dirty = true;
+  renderList();
+  showSaveBar();
+}
+
+function showSaveBar() {
+  let bar = document.getElementById("save-bar");
+  if (!dirty) { if (bar) bar.remove(); return; }
+  if (bar) return;
+  bar = document.createElement("div");
+  bar.id = "save-bar";
+  bar.style.cssText = "position:sticky;bottom:0;left:0;right:0;background:#1c2620;color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:0.85rem;z-index:20;";
+  bar.innerHTML = `<span style="flex:1">Status alterado nesta tela — copie o dados.json atualizado e suba pro GitHub.</span>
+    <button onclick="copyDadosJson()" style="background:#1e6b3f;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-weight:700;font-size:0.82rem;cursor:pointer;">Copiar dados.json</button>`;
+  document.body.appendChild(bar);
+}
+
+function copyDadosJson() {
+  const clean = SONGS.map(({ _idx, ...s }) => s);
+  navigator.clipboard.writeText(JSON.stringify(clean, null, 2));
+  const btn = document.querySelector("#save-bar button");
+  if (btn) { btn.textContent = "Copiado!"; setTimeout(() => btn.textContent = "Copiar dados.json", 1500); }
+}
+
 function renderList() {
   const q = document.getElementById("search").value.toLowerCase();
   const list = document.getElementById("song-list");
@@ -311,21 +345,36 @@ function renderList() {
       const info = document.createElement("div");
       info.className = "song-item-info";
       info.onclick = () => openSong(song._idx);
-      const statusText = { bem: "Bem ensaiada", mal: "Mal ensaiada", nao: "Não ensaiada" }[song.status] || "Não ensaiada";
-      const stClass = { bem: "st-bem", mal: "st-mal", nao: "st-nao" }[song.status] || "st-nao";
       info.innerHTML = `<div class="song-item-title">${song.title}${song.isNew ? '<span class="new-badge">NOVA</span>' : ''}</div>
-        <div class="tag">Tom: ${song.originalKey || "?"}</div>
-        <div class="status-label ${stClass}">${statusText}</div>`;
+        <div class="tag">Tom: ${song.originalKey || "?"}</div>`;
       el.appendChild(info);
 
-      if (song.video) {
+      const statusBtn = document.createElement("button");
+      statusBtn.className = "status-label " + (STATUS_CLASS[song.status] || "st-nao");
+      statusBtn.style.cssText = "background:none;border:none;cursor:pointer;padding:4px 2px;text-align:right;";
+      statusBtn.textContent = STATUS_TEXT[song.status] || STATUS_TEXT.nao;
+      statusBtn.title = "Toca pra mudar o status";
+      statusBtn.onclick = (ev) => cycleStatus(song._idx, ev);
+      const statusWrap = document.createElement("div");
+      statusWrap.style.cssText = "display:flex;flex-direction:column;align-items:flex-end;gap:6px;";
+      statusWrap.appendChild(statusBtn);
+
+      if (song.videoCompleta) {
         const yt = document.createElement("button");
-        yt.className = "yt-icon";
-        yt.textContent = "▶";
-        yt.onclick = () => window.open(song.video, "_blank");
-        el.appendChild(yt);
+        yt.className = "yt-icon"; yt.style.width = "28px"; yt.style.height = "28px"; yt.style.fontSize = "0.75rem";
+        yt.textContent = "▶"; yt.title = "Vídeo — versão completa";
+        yt.onclick = (ev) => { ev.stopPropagation(); window.open(song.videoCompleta, "_blank"); };
+        statusWrap.appendChild(yt);
+      }
+      if (song.videoCongregacional) {
+        const yt = document.createElement("button");
+        yt.className = "yt-icon"; yt.style.width = "28px"; yt.style.height = "28px"; yt.style.fontSize = "0.75rem";
+        yt.textContent = "🎤"; yt.title = "Vídeo — versão congregacional";
+        yt.onclick = (ev) => { ev.stopPropagation(); window.open(song.videoCongregacional, "_blank"); };
+        statusWrap.appendChild(yt);
       }
 
+      el.appendChild(statusWrap);
       list.appendChild(el);
     });
 }
@@ -352,8 +401,8 @@ function openSong(idx) {
 
   const linksRow = document.getElementById("v-links");
   linksRow.innerHTML = "";
-  if (current.video) linksRow.innerHTML += `<a href="${current.video}" target="_blank">▶ Vídeo referência</a>`;
-  if (current.cifraLink) linksRow.innerHTML += `<a href="${current.cifraLink}" target="_blank">📄 Ver cifra completa</a>`;
+  if (current.videoCompleta) linksRow.innerHTML += `<a href="${current.videoCompleta}" target="_blank">▶ Versão completa</a>`;
+  if (current.videoCongregacional) linksRow.innerHTML += `<a href="${current.videoCongregacional}" target="_blank">🎤 Versão congregacional</a>`;
 
   updateView();
 }
@@ -408,6 +457,19 @@ async function loadData() {
     return;
   }
   renderList();
+
+  // Link direto de outra página (ex: Ensaios) — ?song=Nome&singer=Nome abre
+  // a música já no tom daquele cantor, sem precisar buscar na lista.
+  const params = new URLSearchParams(location.search);
+  const wantSong = params.get("song");
+  if (wantSong) {
+    const idx = SONGS.findIndex(s => s.title === wantSong);
+    if (idx !== -1) {
+      openSong(idx);
+      const wantSinger = params.get("singer");
+      if (wantSinger && current.presets && current.presets[wantSinger]) selectSinger(wantSinger);
+    }
+  }
 }
 
 loadData();

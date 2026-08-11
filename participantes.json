@@ -1,0 +1,10 @@
+[
+  { "name": "Ricardo", "vocal": "ministro", "instrumentos": [] },
+  { "name": "Kariny", "vocal": "ministra", "instrumentos": [] },
+  { "name": "Luiz", "vocal": "ministro", "instrumentos": ["Violão", "Teclado", "Baixo", "Cajon"] },
+  { "name": "Lucas", "vocal": "backing", "instrumentos": [] },
+  { "name": "Daina", "vocal": "backing", "instrumentos": [] },
+  { "name": "Caio", "vocal": null, "instrumentos": ["Violão", "Guitarra", "Baixo"] },
+  { "name": "Lauro", "vocal": null, "instrumentos": ["Violão", "Cajon"] },
+  { "name": "Carla", "vocal": null, "instrumentos": ["Violão", "Baixo"] }
+]

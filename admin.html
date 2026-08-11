@@ -38,18 +38,11 @@
   <div><label>Cantor 3</label><input id="s3n" placeholder="Nome"><input id="s3t" placeholder="Tom" style="margin-top:6px"></div>
 </div>
 
-<label>Link do vídeo (YouTube)</label>
-<input id="video" placeholder="https://...">
+<label>Vídeo — versão completa (YouTube)</label>
+<input id="videoCompleta" placeholder="https://...">
 
-<label>Link da cifra completa (Cifra Club, Cifra Clube, etc. — opcional)</label>
-<input id="drive" placeholder="https://www.cifraclub.com.br/...">
-<p style="color:#5c665f;font-size:0.78rem;margin-top:4px;">O site de destino já transpõe o tom de graça — não precisa colar a letra aqui embaixo se preferir só linkar.</p>
-<label>Status</label>
-<select id="status">
-  <option value="bem">Bem ensaiada (verde)</option>
-  <option value="mal">Mal ensaiada (amarelo)</option>
-  <option value="nao">Não ensaiada (vermelho)</option>
-</select>
+<label>Vídeo — versão congregacional (YouTube)</label>
+<input id="videoCongregacional" placeholder="https://...">
 
 <label><input type="checkbox" id="isNew" style="width:auto;display:inline"> É música nova (categoria "Novas")</label>
 
@@ -74,7 +67,7 @@ function gerar() {
   });
   const presetsStr = Object.entries(presets).map(([k,v]) => `"${esc(k)}": "${esc(v)}"`).join(", ");
 
-  const block = `  { "title": "${esc(document.getElementById('title').value)}", "originalKey": "${esc(document.getElementById('key').value)}", "presets": { ${presetsStr} }, "video": "${esc(document.getElementById('video').value)}", "cifraLink": "${esc(document.getElementById('drive').value)}", "chordpro": "${esc(document.getElementById('chordpro').value)}", "status": "${document.getElementById('status').value}", "isNew": ${document.getElementById('isNew').checked} },`;
+  const block = `  { "title": "${esc(document.getElementById('title').value)}", "originalKey": "${esc(document.getElementById('key').value)}", "presets": { ${presetsStr} }, "chordpro": "${esc(document.getElementById('chordpro').value)}", "status": "nao", "isNew": ${document.getElementById('isNew').checked}, "videoCompleta": "${esc(document.getElementById('videoCompleta').value)}", "videoCongregacional": "${esc(document.getElementById('videoCongregacional').value)}" },`;
 
   const out = document.getElementById('out');
   out.textContent = block;
