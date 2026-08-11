@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Gerador de música (uso pessoal)</title>
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; background:#14161a; color:#eef0f3; padding:16px; max-width:640px; margin:0 auto; }
+  h1 { font-size:1.1rem; }
+  p.warn { color:#e8c161; font-size:0.85rem; }
+  label { display:block; margin-top:14px; font-size:0.85rem; color:#9aa1ac; }
+  input, textarea, select { width:100%; padding:9px; border-radius:8px; border:1px solid #313640; background:#1f2229; color:#eef0f3; font-size:0.95rem; box-sizing:border-box; }
+  textarea { min-height:140px; font-family: ui-monospace, monospace; }
+  .row3 { display:flex; gap:8px; }
+  .row3 > div { flex:1; }
+  button { margin-top:16px; padding:12px 18px; border-radius:8px; border:none; background:#2f8f52; color:#0c1116; font-weight:700; font-size:1rem; cursor:pointer; width:100%; }
+  #out { margin-top:16px; white-space:pre-wrap; background:#1f2229; border:1px solid #313640; border-radius:8px; padding:12px; font-family: ui-monospace, monospace; font-size:0.85rem; }
+  .copybtn { background:#262a33; color:#eef0f3; margin-top:8px; }
+</style>
+</head>
+<body>
+<h1>Gerador de bloco de música</h1>
+<p class="warn">Só pra você usar localmente. Gera um bloco pra colar dentro do array em <code style="background:#1f2229;padding:1px 5px;border-radius:4px;">dados.json</code>, não no cifras.html.</p>
+
+<label>Título</label>
+<input id="title" placeholder="Ex: Te agradeço">
+
+<label>Tom original</label>
+<input id="key" placeholder="Ex: G, Am, D">
+
+<div class="row3">
+  <div><label>Cantor 1</label><input id="s1n" placeholder="Nome"><input id="s1t" placeholder="Tom" style="margin-top:6px"></div>
+  <div><label>Cantor 2</label><input id="s2n" placeholder="Nome"><input id="s2t" placeholder="Tom" style="margin-top:6px"></div>
+  <div><label>Cantor 3</label><input id="s3n" placeholder="Nome"><input id="s3t" placeholder="Tom" style="margin-top:6px"></div>
+</div>
+
+<label>Link do vídeo (YouTube)</label>
+<input id="video" placeholder="https://...">
+
+<label>Link da cifra completa (Cifra Club, Cifra Clube, etc. — opcional)</label>
+<input id="drive" placeholder="https://www.cifraclub.com.br/...">
+<p style="color:#9aa1ac;font-size:0.78rem;margin-top:4px;">O site de destino já transpõe o tom de graça — não precisa colar a letra aqui embaixo se preferir só linkar.</p>
+<label>Status</label>
+<select id="status">
+  <option value="bem">Bem ensaiada (verde)</option>
+  <option value="mal">Mal ensaiada (amarelo)</option>
+  <option value="nao">Não ensaiada (vermelho)</option>
+</select>
+
+<label><input type="checkbox" id="isNew" style="width:auto;display:inline"> É música nova (categoria "Novas")</label>
+
+<label>Cifra (formato ChordPro — acorde colado antes da palavra, entre colchetes)</label>
+<textarea id="chordpro" placeholder="[G]Te agradeço [D]Senhor
+[Em]Por tudo o [C]que fizeste"></textarea>
+
+<button onclick="gerar()">Gerar bloco</button>
+
+<div id="out" style="display:none"></div>
+<button class="copybtn" id="copybtn" style="display:none" onclick="copiar()">Copiar</button>
+
+<script>
+function esc(s) { return (s || "").replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\n/g,"\\n"); }
+
+function gerar() {
+  const presets = {};
+  [["s1n","s1t"],["s2n","s2t"],["s3n","s3t"]].forEach(([n,t]) => {
+    const name = document.getElementById(n).value.trim();
+    const tone = document.getElementById(t).value.trim();
+    if (name && tone) presets[name] = tone;
+  });
+  const presetsStr = Object.entries(presets).map(([k,v]) => `"${esc(k)}": "${esc(v)}"`).join(", ");
+
+  const block = `  { "title": "${esc(document.getElementById('title').value)}", "originalKey": "${esc(document.getElementById('key').value)}", "presets": { ${presetsStr} }, "video": "${esc(document.getElementById('video').value)}", "cifraLink": "${esc(document.getElementById('drive').value)}", "chordpro": "${esc(document.getElementById('chordpro').value)}", "status": "${document.getElementById('status').value}", "isNew": ${document.getElementById('isNew').checked} },`;
+
+  const out = document.getElementById('out');
+  out.textContent = block;
+  out.style.display = 'block';
+  document.getElementById('copybtn').style.display = 'block';
+}
+
+function copiar() {
+  navigator.clipboard.writeText(document.getElementById('out').textContent);
+  document.getElementById('copybtn').textContent = 'Copiado!';
+  setTimeout(() => document.getElementById('copybtn').textContent = 'Copiar', 1500);
+}
+</script>
+</body>
+</html>

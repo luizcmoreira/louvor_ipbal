@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cifras - Ministério de Louvor IP Arthur Lundgren I</title>
+<style>
+  :root {
+    /* Verde e Cinza são as cores institucionais da IPB (Pantone 350C e Cool Gray/Black C
+       no manual de identidade visual). Tons ajustados para contraste em tela escura. */
+    --bg: #14161a;
+    --card: #1f2229;
+    --card-2: #262a33;
+    --text: #eef0f3;
+    --muted: #9aa1ac;
+    --accent: #2f8f52;      /* verde IPB */
+    --accent-2: #c3c8cf;    /* cinza IPB */
+    --border: #313640;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 60px;
+  }
+  header {
+    padding: 18px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+  .header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .logo { width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; }
+  header h1 { font-size: 1.05rem; margin: 0; line-height: 1.3; }
+  #search {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 1rem;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  #search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,143,82,0.25); }
+
+  .filter-row { display: flex; gap: 8px; margin-top: 10px; }
+  .filter-btn {
+    padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--card); color: var(--muted); font-size: 0.85rem; cursor: pointer;
+    transition: all .15s ease;
+  }
+  .filter-btn:active { transform: scale(0.96); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #0c1116; font-weight: 600; box-shadow: 0 2px 8px rgba(47,143,82,0.35); }
+  #song-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .song-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 12px 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform .12s ease;
+  }
+  .song-item-info { flex: 1; cursor: pointer; }
+  .song-item-info:active { opacity: 0.7; }
+  .song-item-title { font-size: 1.02rem; margin-bottom: 3px; font-weight: 600; }
+  .song-item .tag { color: var(--muted); font-size: 0.85rem; }
+  .yt-icon {
+    flex-shrink: 0;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--card-2);
+    color: var(--accent);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s ease;
+  }
+  .yt-icon:active { background: var(--accent); color: #0c1116; transform: scale(0.92); }
+
+  #view { display: none; padding: 12px 16px 40px; }
+  #view.active { display: block; }
+  .back-btn {
+    background: none; border: none; color: var(--accent);
+    font-size: 1rem; padding: 6px 0 14px; cursor: pointer; font-weight: 600;
+  }
+  .song-title { font-size: 1.3rem; margin: 0 0 4px; }
+  .song-meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 14px; }
+
+  .singer-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .singer-btn {
+    flex: 1 1 auto;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .singer-btn:active { transform: scale(0.96); }
+  .singer-btn.active { background: var(--accent); color: #0c1116; border-color: var(--accent); font-weight: 600; box-shadow: 0 2px 8px rgba(47,143,82,0.35); }
+
+  .tone-control {
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .tone-control button {
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--card-2); color: var(--text);
+    font-size: 1.3rem; cursor: pointer; transition: all .15s ease;
+  }
+  .tone-control button:active { transform: scale(0.9); background: var(--accent); color: #0c1116; }
+  .tone-display { font-size: 1.4rem; font-weight: 700; color: var(--accent-2); min-width: 60px; text-align: center; }
+
+  .links-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .links-row a {
+    color: var(--accent); text-decoration: none; font-size: 0.9rem; font-weight: 600;
+    border: 1px solid var(--border); padding: 9px 14px; border-radius: 10px;
+    transition: all .15s ease;
+  }
+  .links-row a:active { background: var(--accent); color: #0c1116; }
+
+  .cifra {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 18px; white-space: pre-wrap; line-height: 2.3; font-size: 1.2rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .chord {
+    display: inline-block;
+    background: rgba(47, 143, 82, 0.22);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.68em;
+    padding: 1px 7px;
+    border-radius: 6px;
+    margin: 0 3px 3px 0;
+    vertical-align: 4px;
+  }
+
+  .song-item.status-bem { background: rgba(47, 143, 82, 0.20); border-color: rgba(47, 143, 82, 0.5); }
+  .song-item.status-mal { background: rgba(217, 167, 44, 0.20); border-color: rgba(217, 167, 44, 0.5); }
+  .song-item.status-nao { background: rgba(201, 79, 79, 0.20); border-color: rgba(201, 79, 79, 0.5); }
+  .status-label { font-size: 0.78rem; margin-top: 2px; }
+  .st-bem { color: #6fd68f; }
+  .st-mal { color: #e8c161; }
+  .st-nao { color: #e88a8a; }
+  .new-badge {
+    display: inline-block; background: var(--accent-2); color: #14161a;
+    font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 8px;
+    margin-left: 6px; vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <img src="logo-ipb.png" class="logo" alt="" onerror="this.style.display='none'">
+    <h1>🎵 Ministério de Louvor<br>Igreja Presbiteriana Arthur Lundgren I</h1>
+  </div>
+  <input id="search" placeholder="Buscar música..." oninput="renderList()">
+  <div class="filter-row">
+    <button class="filter-btn active" data-f="todas" onclick="setFilter('todas')">Todas</button>
+    <button class="filter-btn" data-f="repertorio" onclick="setFilter('repertorio')">Repertório</button>
+    <button class="filter-btn" data-f="novas" onclick="setFilter('novas')">Novas</button>
+  </div>
+</header>
+
+<div id="song-list"></div>
+
+<div id="view">
+  <button class="back-btn" onclick="closeSong()">← Voltar</button>
+  <h2 class="song-title" id="v-title"></h2>
+  <div class="song-meta" id="v-meta"></div>
+
+  <div class="singer-row" id="v-singers"></div>
+
+  <div class="tone-control">
+    <button onclick="adjustTone(-1)">−</button>
+    <div class="tone-display" id="v-tone">G</div>
+    <button onclick="adjustTone(1)">+</button>
+  </div>
+
+  <div class="links-row" id="v-links"></div>
+
+  <div class="cifra" id="v-cifra"></div>
+</div>
+
+<script>
+/* =========================================================================
+   EDITE AQUI — dados das músicas.
+   Cada música é um objeto com:
+   - title: nome da música
+   - originalKey: tom original (ex: "G", "Am", "D"). Deixe "" se ainda não souber.
+   - presets: tom de cada cantor nessa música (ex: { Ricardo: "G", Karine: "G", "Luís": "C" })
+   - video: link de referência (opcional, pode deixar "")
+   - cifraLink: link para a cifra completa em site externo (Cifra Club, Cifra Clube, etc.),
+     onde o próprio site já transpõe de graça. Deixe "" se ainda não tiver.
+   - chordpro: a letra com os acordes colados entre colchetes, ex: "[G]Te agradeço [D]Senhor"
+     use \n para quebra de linha dentro da string. Deixe "" se ainda não cadastrou.
+   - status: "bem" (verde), "mal" (amarelo) ou "nao" (vermelho, ainda não ensaiada)
+   - isNew: true para músicas novas sendo inseridas/testadas, false para repertório fixo
+
+   Dica: em vez de editar isso na mão, use o admin.html — ele gera o bloco pronto
+   pra colar aqui a partir de um formulário.
+   ========================================================================= */
+/* =========================================================================
+   CONFIGURAÇÃO — só isso aqui precisa ser editado uma vez.
+   Depois de subir o repositório pro GitHub e ligar o GitHub Pages, troque
+   a linha abaixo pela URL real do seu dados.json, no formato:
+   https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPO/main/dados.json
+   ========================================================================= */
+const DADOS_URL = "dados.json"; // funciona local (arquivo ao lado) e continua funcionando publicado, se o dados.json estiver na mesma pasta do repo
+
+let SONGS = [];
+
+/* ===================== lógica de transposição — não precisa mexer ===================== */
+
+const SHARPS = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const FLAT_TO_SHARP = { "Db":"C#","Eb":"D#","Gb":"F#","Ab":"G#","Bb":"A#" };
+
+function noteIndex(note) {
+  if (FLAT_TO_SHARP[note]) note = FLAT_TO_SHARP[note];
+  return SHARPS.indexOf(note);
+}
+
+function transposeNote(note, semitones) {
+  const idx = noteIndex(note);
+  if (idx === -1) return note;
+  return SHARPS[(idx + semitones + 120) % 12];
+}
+
+function transposeChord(chord, semitones) {
+  // separa acorde principal e baixo (acorde/baixo)
+  const parts = chord.split("/");
+  const transposed = parts.map((part, i) => {
+    const m = part.match(/^([A-G](?:#|b)?)(.*)$/);
+    if (!m) return part;
+    const [, root, suffix] = m;
+    return transposeNote(root, semitones) + suffix;
+  });
+  return transposed.join("/");
+}
+
+function transposeChordPro(text, semitones) {
+  return text.replace(/\[([^\]]+)\]/g, (_, chord) => "[" + transposeChord(chord, semitones) + "]");
+}
+
+function renderChordProToHTML(text) {
+  const escaped = text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return escaped.replace(/\[([^\]]+)\]/g, '<span class="chord">$1</span>');
+}
+
+function semitonesBetweenKeys(fromKey, toKey) {
+  const fromMatch = (fromKey || "").match(/^[A-G](#|b)?/);
+  const toMatch = (toKey || "").match(/^[A-G](#|b)?/);
+  if (!fromMatch || !toMatch) return 0;
+  const fi = noteIndex(fromMatch[0]), ti = noteIndex(toMatch[0]);
+  if (fi === -1 || ti === -1) return 0;
+  return (ti - fi + 12) % 12;
+}
+
+/* ===================== estado e UI ===================== */
+
+let current = null;      // música aberta
+let activeSinger = null; // nome do cantor selecionado
+let manualOffset = 0;    // ajuste manual em cima do preset
+
+let currentFilter = "todas";
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b.dataset.f === f));
+  renderList();
+}
+
+function renderList() {
+  const q = document.getElementById("search").value.toLowerCase();
+  const list = document.getElementById("song-list");
+  list.innerHTML = "";
+  SONGS.forEach((song, realIdx) => song._idx = realIdx); // guarda índice real antes de filtrar
+  SONGS
+    .filter(s => s.title.toLowerCase().includes(q))
+    .filter(s => currentFilter === "todas" || (currentFilter === "novas" ? s.isNew : !s.isNew))
+    .forEach(song => {
+      const el = document.createElement("div");
+      el.className = "song-item status-" + (song.status || "nao");
+
+      const info = document.createElement("div");
+      info.className = "song-item-info";
+      info.onclick = () => openSong(song._idx);
+      const statusText = { bem: "Bem ensaiada", mal: "Mal ensaiada", nao: "Não ensaiada" }[song.status] || "Não ensaiada";
+      const stClass = { bem: "st-bem", mal: "st-mal", nao: "st-nao" }[song.status] || "st-nao";
+      info.innerHTML = `<div class="song-item-title">${song.title}${song.isNew ? '<span class="new-badge">NOVA</span>' : ''}</div>
+        <div class="tag">Tom: ${song.originalKey || "?"}</div>
+        <div class="status-label ${stClass}">${statusText}</div>`;
+      el.appendChild(info);
+
+      if (song.video) {
+        const yt = document.createElement("button");
+        yt.className = "yt-icon";
+        yt.textContent = "▶";
+        yt.onclick = () => window.open(song.video, "_blank");
+        el.appendChild(yt);
+      }
+
+      list.appendChild(el);
+    });
+}
+
+function openSong(idx) {
+  current = SONGS[idx];
+  activeSinger = Object.keys(current.presets || {})[0] || null;
+  manualOffset = 0;
+  document.getElementById("song-list").style.display = "none";
+  document.querySelector("header").style.display = "none";
+  document.getElementById("view").classList.add("active");
+  document.getElementById("v-title").textContent = current.title;
+  document.getElementById("v-meta").textContent = "Tom original: " + (current.originalKey || "não definido");
+
+  const singerRow = document.getElementById("v-singers");
+  singerRow.innerHTML = "";
+  Object.keys(current.presets || {}).forEach(name => {
+    const btn = document.createElement("button");
+    btn.className = "singer-btn" + (name === activeSinger ? " active" : "");
+    btn.textContent = name;
+    btn.onclick = () => selectSinger(name);
+    singerRow.appendChild(btn);
+  });
+
+  const linksRow = document.getElementById("v-links");
+  linksRow.innerHTML = "";
+  if (current.video) linksRow.innerHTML += `<a href="${current.video}" target="_blank">▶ Vídeo referência</a>`;
+  if (current.cifraLink) linksRow.innerHTML += `<a href="${current.cifraLink}" target="_blank">📄 Ver cifra completa</a>`;
+
+  updateView();
+}
+
+function closeSong() {
+  current = null;
+  document.getElementById("view").classList.remove("active");
+  document.getElementById("song-list").style.display = "flex";
+  document.querySelector("header").style.display = "block";
+}
+
+function selectSinger(name) {
+  activeSinger = name;
+  manualOffset = 0;
+  document.querySelectorAll(".singer-btn").forEach(b => {
+    b.classList.toggle("active", b.textContent === name);
+  });
+  updateView();
+}
+
+function adjustTone(delta) {
+  manualOffset += delta;
+  updateView();
+}
+
+function updateView() {
+  if (!current) return;
+  const presetKey = activeSinger ? current.presets[activeSinger] : current.originalKey;
+  const baseSemitones = semitonesBetweenKeys(current.originalKey, presetKey);
+  const totalSemitones = (baseSemitones + manualOffset + 120) % 12;
+  const rootMatch = (current.originalKey || "").match(/^[A-G](#|b)?/);
+  document.getElementById("v-tone").textContent = rootMatch
+    ? transposeNote(rootMatch[0], totalSemitones) + current.originalKey.replace(/^[A-G](#|b)?/, "")
+    : "—";
+  if (!current.chordpro) {
+    document.getElementById("v-cifra").innerHTML = "<em>Cifra ainda não cadastrada para esta música.</em>";
+    return;
+  }
+  const transposedText = transposeChordPro(current.chordpro, totalSemitones);
+  document.getElementById("v-cifra").innerHTML = renderChordProToHTML(transposedText);
+}
+
+async function loadData() {
+  const list = document.getElementById("song-list");
+  list.innerHTML = "<p style='color:var(--muted);padding:8px 0;'>Carregando músicas...</p>";
+  try {
+    const res = await fetch(DADOS_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    SONGS = await res.json();
+  } catch (e) {
+    list.innerHTML = `<p style='color:#e88a8a;padding:8px 0;'>Não consegui carregar dados.json (${e.message}). Confira se o arquivo está na mesma pasta ou se a URL em DADOS_URL está certa.</p>`;
+    return;
+  }
+  renderList();
+}
+
+loadData();
+</script>
+</body>
+</html>
