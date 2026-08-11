@@ -6,16 +6,17 @@
 <title>Cifras - Ministério de Louvor IP Arthur Lundgren I</title>
 <style>
   :root {
-    /* Verde e Cinza são as cores institucionais da IPB (Pantone 350C e Cool Gray/Black C
-       no manual de identidade visual). Tons ajustados para contraste em tela escura. */
-    --bg: #14161a;
-    --card: #1f2229;
-    --card-2: #262a33;
-    --text: #eef0f3;
-    --muted: #9aa1ac;
-    --accent: #2f8f52;      /* verde IPB */
-    --accent-2: #c3c8cf;    /* cinza IPB */
-    --border: #313640;
+    /* Verde e Cinza são as cores institucionais da IPB (Pantone 350C e Cool
+       Gray/Black C no manual de identidade visual). */
+    --bg: #f5f7f4;
+    --card: #ffffff;
+    --card-2: #eef2ec;
+    --text: #1c2620;
+    --muted: #5c665f;
+    --accent: #1e6b3f;       /* verde IPB */
+    --accent-2: #6b7a70;     /* cinza institucional */
+    --accent-on: #ffffff;
+    --border: #dde3da;
   }
   * { box-sizing: border-box; }
   body {
@@ -26,16 +27,21 @@
     padding-bottom: 60px;
   }
   header {
-    padding: 18px 16px 12px;
+    padding: 14px 16px 12px;
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
     background: var(--bg);
     z-index: 10;
   }
+  .home-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    color: var(--accent); text-decoration: none; font-size: 0.82rem; font-weight: 700;
+    margin-bottom: 10px;
+  }
   .header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-  .logo { width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; }
-  header h1 { font-size: 1.05rem; margin: 0; line-height: 1.3; }
+  .logo { width: 38px; height: 38px; object-fit: contain; flex-shrink: 0; }
+  header h1 { font-size: 1.0rem; margin: 0; line-height: 1.3; color: var(--text); }
   #search {
     width: 100%;
     padding: 11px 14px;
@@ -45,9 +51,10 @@
     color: var(--text);
     font-size: 1rem;
     outline: none;
+    box-shadow: 0 1px 2px rgba(20,30,20,0.04);
     transition: border-color .15s ease, box-shadow .15s ease;
   }
-  #search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,143,82,0.25); }
+  #search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(30,107,63,0.15); }
 
   .filter-row { display: flex; gap: 8px; margin-top: 10px; }
   .filter-btn {
@@ -56,7 +63,7 @@
     transition: all .15s ease;
   }
   .filter-btn:active { transform: scale(0.96); }
-  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #0c1116; font-weight: 600; box-shadow: 0 2px 8px rgba(47,143,82,0.35); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-on); font-weight: 600; box-shadow: 0 2px 8px rgba(30,107,63,0.25); }
   #song-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
   .song-item {
     background: var(--card);
@@ -67,7 +74,7 @@
     justify-content: space-between;
     align-items: center;
     gap: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 3px rgba(20,30,20,0.05);
     transition: transform .12s ease;
   }
   .song-item-info { flex: 1; cursor: pointer; }
@@ -86,7 +93,7 @@
     display: flex; align-items: center; justify-content: center;
     transition: all .15s ease;
   }
-  .yt-icon:active { background: var(--accent); color: #0c1116; transform: scale(0.92); }
+  .yt-icon:active { background: var(--accent); color: var(--accent-on); transform: scale(0.92); }
 
   #view { display: none; padding: 12px 16px 40px; }
   #view.active { display: block; }
@@ -94,7 +101,7 @@
     background: none; border: none; color: var(--accent);
     font-size: 1rem; padding: 6px 0 14px; cursor: pointer; font-weight: 600;
   }
-  .song-title { font-size: 1.3rem; margin: 0 0 4px; }
+  .song-title { font-size: 1.3rem; margin: 0 0 4px; color: var(--text); }
   .song-meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 14px; }
 
   .singer-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -110,20 +117,20 @@
     transition: all .15s ease;
   }
   .singer-btn:active { transform: scale(0.96); }
-  .singer-btn.active { background: var(--accent); color: #0c1116; border-color: var(--accent); font-weight: 600; box-shadow: 0 2px 8px rgba(47,143,82,0.35); }
+  .singer-btn.active { background: var(--accent); color: var(--accent-on); border-color: var(--accent); font-weight: 600; box-shadow: 0 2px 8px rgba(30,107,63,0.25); }
 
   .tone-control {
     display: flex; align-items: center; justify-content: center; gap: 18px;
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    padding: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    padding: 12px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(20,30,20,0.05);
   }
   .tone-control button {
     width: 46px; height: 46px; border-radius: 50%;
     border: 1px solid var(--border); background: var(--card-2); color: var(--text);
     font-size: 1.3rem; cursor: pointer; transition: all .15s ease;
   }
-  .tone-control button:active { transform: scale(0.9); background: var(--accent); color: #0c1116; }
-  .tone-display { font-size: 1.4rem; font-weight: 700; color: var(--accent-2); min-width: 60px; text-align: center; }
+  .tone-control button:active { transform: scale(0.9); background: var(--accent); color: var(--accent-on); }
+  .tone-display { font-size: 1.4rem; font-weight: 700; color: var(--accent); min-width: 60px; text-align: center; }
 
   .links-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   .links-row a {
@@ -131,17 +138,17 @@
     border: 1px solid var(--border); padding: 9px 14px; border-radius: 10px;
     transition: all .15s ease;
   }
-  .links-row a:active { background: var(--accent); color: #0c1116; }
+  .links-row a:active { background: var(--accent); color: var(--accent-on); }
 
   .cifra {
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
     padding: 20px 18px; white-space: pre-wrap; line-height: 2.3; font-size: 1.2rem;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-    font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    font-weight: 500; box-shadow: 0 1px 3px rgba(20,30,20,0.05);
   }
   .chord {
     display: inline-block;
-    background: rgba(47, 143, 82, 0.22);
+    background: rgba(30, 107, 63, 0.12);
     color: var(--accent);
     font-weight: 700;
     font-size: 0.68em;
@@ -151,15 +158,15 @@
     vertical-align: 4px;
   }
 
-  .song-item.status-bem { background: rgba(47, 143, 82, 0.20); border-color: rgba(47, 143, 82, 0.5); }
-  .song-item.status-mal { background: rgba(217, 167, 44, 0.20); border-color: rgba(217, 167, 44, 0.5); }
-  .song-item.status-nao { background: rgba(201, 79, 79, 0.20); border-color: rgba(201, 79, 79, 0.5); }
-  .status-label { font-size: 0.78rem; margin-top: 2px; }
-  .st-bem { color: #6fd68f; }
-  .st-mal { color: #e8c161; }
-  .st-nao { color: #e88a8a; }
+  .song-item.status-bem { background: rgba(30, 107, 63, 0.08); border-color: rgba(30, 107, 63, 0.3); }
+  .song-item.status-mal { background: rgba(196, 138, 23, 0.10); border-color: rgba(196, 138, 23, 0.35); }
+  .song-item.status-nao { background: rgba(196, 60, 60, 0.08); border-color: rgba(196, 60, 60, 0.28); }
+  .status-label { font-size: 0.78rem; margin-top: 2px; font-weight: 600; }
+  .st-bem { color: #1e7a45; }
+  .st-mal { color: #96650f; }
+  .st-nao { color: #b23f3f; }
   .new-badge {
-    display: inline-block; background: var(--accent-2); color: #14161a;
+    display: inline-block; background: var(--accent-2); color: #ffffff;
     font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 8px;
     margin-left: 6px; vertical-align: middle;
   }
@@ -168,6 +175,7 @@
 <body>
 
 <header>
+  <a class="home-link" href="index.html">← Início</a>
   <div class="header-top">
     <img src="logo-ipb.png" class="logo" alt="" onerror="this.style.display='none'">
     <h1>🎵 Ministério de Louvor<br>Igreja Presbiteriana Arthur Lundgren I</h1>

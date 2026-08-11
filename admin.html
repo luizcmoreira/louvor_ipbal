@@ -5,22 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin — Gerador de música (uso pessoal)</title>
 <style>
-  body { font-family: -apple-system, Arial, sans-serif; background:#14161a; color:#eef0f3; padding:16px; max-width:640px; margin:0 auto; }
-  h1 { font-size:1.1rem; }
-  p.warn { color:#e8c161; font-size:0.85rem; }
-  label { display:block; margin-top:14px; font-size:0.85rem; color:#9aa1ac; }
-  input, textarea, select { width:100%; padding:9px; border-radius:8px; border:1px solid #313640; background:#1f2229; color:#eef0f3; font-size:0.95rem; box-sizing:border-box; }
+  body { font-family: -apple-system, Arial, sans-serif; background:#f5f7f4; color:#1c2620; padding:16px; max-width:640px; margin:0 auto; }
+  .home-link { display:inline-flex; align-items:center; gap:4px; color:#1e6b3f; text-decoration:none; font-size:0.82rem; font-weight:700; }
+  h1 { font-size:1.1rem; margin-top:14px; }
+  p.warn { color:#96650f; font-size:0.85rem; background:rgba(196,138,23,0.10); border:1px solid rgba(196,138,23,0.3); border-radius:8px; padding:10px 12px; }
+  label { display:block; margin-top:14px; font-size:0.85rem; color:#5c665f; }
+  input, textarea, select { width:100%; padding:9px; border-radius:8px; border:1px solid #dde3da; background:#ffffff; color:#1c2620; font-size:0.95rem; box-sizing:border-box; }
+  input:focus, textarea:focus, select:focus { outline:none; border-color:#1e6b3f; box-shadow:0 0 0 3px rgba(30,107,63,0.15); }
   textarea { min-height:140px; font-family: ui-monospace, monospace; }
   .row3 { display:flex; gap:8px; }
   .row3 > div { flex:1; }
-  button { margin-top:16px; padding:12px 18px; border-radius:8px; border:none; background:#2f8f52; color:#0c1116; font-weight:700; font-size:1rem; cursor:pointer; width:100%; }
-  #out { margin-top:16px; white-space:pre-wrap; background:#1f2229; border:1px solid #313640; border-radius:8px; padding:12px; font-family: ui-monospace, monospace; font-size:0.85rem; }
-  .copybtn { background:#262a33; color:#eef0f3; margin-top:8px; }
+  button { margin-top:16px; padding:12px 18px; border-radius:8px; border:none; background:#1e6b3f; color:#ffffff; font-weight:700; font-size:1rem; cursor:pointer; width:100%; }
+  #out { margin-top:16px; white-space:pre-wrap; background:#eef2ec; border:1px solid #dde3da; border-radius:8px; padding:12px; font-family: ui-monospace, monospace; font-size:0.85rem; }
+  .copybtn { background:#ffffff; color:#1c2620; border:1px solid #dde3da; margin-top:8px; }
 </style>
 </head>
 <body>
+<a class="home-link" href="index.html">← Início</a>
 <h1>Gerador de bloco de música</h1>
-<p class="warn">Só pra você usar localmente. Gera um bloco pra colar dentro do array em <code style="background:#1f2229;padding:1px 5px;border-radius:4px;">dados.json</code>, não no cifras.html.</p>
+<p class="warn">Só pra você usar localmente. Gera um bloco pra colar dentro do array em <code style="background:#ffffff;padding:1px 5px;border-radius:4px;border:1px solid #dde3da;">dados.json</code>, não no cifras.html.</p>
 
 <label>Título</label>
 <input id="title" placeholder="Ex: Te agradeço">
