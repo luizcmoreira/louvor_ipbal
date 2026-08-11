@@ -43,6 +43,10 @@ function doPost(e) {
       body.date, body.label || "", body.ministro || "",
       body.musicos || "", body.vocalBacking || "", body.repertorio || "",
     ]);
+  } else if (body.action === "updateEscala") {
+    updateRowByMultiMatch("Escala",
+      { date: body.matchDate, label: body.matchLabel },
+      { date: body.date, label: body.label, ministro: body.ministro, musicos: body.musicos, vocalBacking: body.vocalBacking, repertorio: body.repertorio });
   } else if (body.action === "deleteEscala") {
     deleteRowByMatch("Escala", { date: body.date, label: body.label });
   } else {
@@ -66,6 +70,31 @@ function updateRowByMatch(sheetName, matchCol, matchVal, patch) {
       break;
     }
   }
+}
+
+// Igual updateRowByMatch, mas identifica a linha por VÁRIAS colunas ao mesmo
+// tempo (ex: date + label, já que Escala não tem uma coluna única por si só).
+function updateRowByMultiMatch(sheetName, matchCols, patch) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0];
+  const cols = Object.keys(matchCols).map(k => ({ key: k, idx: headers.indexOf(k) }));
+  for (let r = 1; r < values.length; r++) {
+    const isMatch = cols.every(({ key, idx }) => {
+      let cell = values[r][idx];
+      if (key === "date") cell = formatDate(cell);
+      return cell === matchCols[key];
+    });
+    if (isMatch) {
+      headers.forEach((h, i) => {
+        if (Object.prototype.hasOwnProperty.call(patch, h) && patch[h] !== undefined) {
+          sheet.getRange(r + 1, i + 1).setValue(patch[h]);
+        }
+      });
+      return true;
+    }
+  }
+  return false;
 }
 
 // Apaga a PRIMEIRA linha cujas colunas em `matchCols` batem todas com o valor

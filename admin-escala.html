@@ -34,7 +34,7 @@
 <script src="config.js"></script>
 <body>
 <a class="home-link" href="escala.html">← Escala</a>
-<h1>Adicionar culto na escala</h1>
+<h1 id="page-title">Adicionar culto na escala</h1>
 
 <label>Data</label>
 <input type="date" id="date">
@@ -56,10 +56,15 @@
 <p class="hint">O tom mostrado na Escala/Ensaios é o do ministro selecionado acima (ou o tom original, se não houver preset dele pra essa música).</p>
 
 <button onclick="salvar()" id="save-btn">Salvar na escala</button>
+<button onclick="excluirCulto()" id="delete-btn" style="display:none;background:none;color:#b23f3f;font-weight:600;">Excluir culto</button>
 <p id="msg" style="text-align:center;font-size:0.85rem;margin-top:10px;"></p>
 
 <script>
 let people = [], songs = [];
+const params = new URLSearchParams(location.search);
+const editDate = params.get("date");
+const editLabel = params.get("label");
+const isEditing = editDate !== null;
 
 async function init() {
   try {
@@ -84,14 +89,70 @@ async function init() {
     </div>`;
   }).join("");
 
-  const backing = people.filter(p => p.vocal === "backing");
+  // Backing pode ser qualquer um que canta — inclusive ministro, quando não
+  // é ele quem lidera naquele culto específico.
+  const backing = people.filter(p => !!p.vocal);
   document.getElementById("backing").innerHTML = backing.map(p =>
     `<label><input type="checkbox" value="${p.name}" class="backing-cb"> ${p.name}</label>`).join("");
 
   document.getElementById("repertorio").innerHTML = songs.map(s =>
     `<label><input type="checkbox" value="${s.title}" class="rep-cb"> ${s.title}</label>`).join("");
+
+  if (isEditing) await prefillEdit();
 }
 init();
+
+async function prefillEdit() {
+  document.getElementById("page-title").textContent = "Editar culto";
+  document.getElementById("save-btn").textContent = "Salvar alterações";
+  document.getElementById("delete-btn").style.display = "block";
+  let escala;
+  try {
+    escala = await fetch(API_URL + "?sheet=Escala", { cache: "no-store" }).then(r => r.json());
+  } catch (e) {
+    document.getElementById("msg").textContent = "Não consegui carregar o culto pra editar.";
+    return;
+  }
+  const c = escala.find(x => x.date === editDate && (x.label || "") === (editLabel || ""));
+  if (!c) { document.getElementById("msg").textContent = "Culto não encontrado."; return; }
+
+  document.getElementById("date").value = c.date;
+  document.getElementById("label").value = c.label || "";
+  document.getElementById("ministro").value = c.ministro || "";
+
+  (c.musicos || []).forEach(m => {
+    const cb = document.querySelector(`.musico-cb[value="${CSS.escape(m.name)}"]`);
+    if (cb) { cb.checked = true; toggleMusico(cb); const sel = cb.closest(".musico-row").querySelector(".musico-instrumento"); if (sel) sel.value = m.instrumento; }
+  });
+  (c.vocalBacking || []).forEach(name => {
+    const cb = document.querySelector(`.backing-cb[value="${CSS.escape(name)}"]`);
+    if (cb) cb.checked = true;
+  });
+  (c.repertorio || []).forEach(title => {
+    const cb = document.querySelector(`.rep-cb[value="${CSS.escape(title)}"]`);
+    if (cb) cb.checked = true;
+  });
+}
+
+async function excluirCulto() {
+  if (!confirm("Excluir este culto da escala? Não tem como desfazer.")) return;
+  const btn = document.getElementById("delete-btn");
+  btn.disabled = true; btn.textContent = "Excluindo…";
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "deleteEscala", date: editDate, label: editLabel }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao excluir");
+    location.href = "escala.html";
+  } catch (e) {
+    document.getElementById("msg").style.color = "#b23f3f";
+    document.getElementById("msg").textContent = "Não deu pra excluir: " + e.message;
+    btn.disabled = false; btn.textContent = "Excluir culto";
+  }
+}
 
 function esc(s) { return (s || "").replace(/\\/g,"\\\\").replace(/"/g,'\\"'); }
 function checked(cls) { return [...document.querySelectorAll("." + cls + ":checked")].map(el => el.value); }
@@ -113,7 +174,8 @@ async function salvar() {
   if (!date) { alert("Escolhe a data do culto."); return; }
   const musicos = musicosEscolhidos().map(m => `${m.name}:${m.instrumento}`).join(", ");
   const entry = {
-    action: "addEscala",
+    action: isEditing ? "updateEscala" : "addEscala",
+    matchDate: editDate, matchLabel: editLabel,
     date,
     label: document.getElementById("label").value,
     ministro: document.getElementById("ministro").value,
@@ -133,12 +195,12 @@ async function salvar() {
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || "falha ao salvar");
     msg.style.color = "#1e6b3f";
-    msg.textContent = "Culto adicionado à escala!";
+    msg.textContent = isEditing ? "Culto atualizado!" : "Culto adicionado à escala!";
     setTimeout(() => location.href = "escala.html", 900);
   } catch (e) {
     msg.style.color = "#b23f3f";
     msg.textContent = "Não deu pra salvar: " + e.message;
-    btn.disabled = false; btn.textContent = "Salvar na escala";
+    btn.disabled = false; btn.textContent = isEditing ? "Salvar alterações" : "Salvar na escala";
   }
 }
 </script>
