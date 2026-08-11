@@ -32,11 +32,15 @@ function doPost(e) {
     ]);
   } else if (body.action === "updateMusica") {
     updateRowByMatch("Musicas", "title", body.matchTitle, body);
+  } else if (body.action === "deleteMusica") {
+    deleteRowByMatch("Musicas", { title: body.title });
   } else if (body.action === "addEscala") {
     ss.getSheetByName("Escala").appendRow([
       body.date, body.label || "", body.ministro || "",
       body.musicos || "", body.vocalBacking || "", body.repertorio || "",
     ]);
+  } else if (body.action === "deleteEscala") {
+    deleteRowByMatch("Escala", { date: body.date, label: body.label });
   } else {
     return jsonOut({ ok: false, error: "ação desconhecida" });
   }
@@ -58,6 +62,29 @@ function updateRowByMatch(sheetName, matchCol, matchVal, patch) {
       break;
     }
   }
+}
+
+// Apaga a PRIMEIRA linha cujas colunas em `matchCols` batem todas com o valor
+// pedido (ex: { title: "Te agradeço" } ou { date: "2026-08-16", label: "..." }).
+// Datas são comparadas já formatadas (yyyy-MM-dd), porque a planilha guarda a
+// coluna "date" como objeto Date, não como texto puro.
+function deleteRowByMatch(sheetName, matchCols) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0];
+  const cols = Object.keys(matchCols).map(k => ({ key: k, idx: headers.indexOf(k) }));
+  for (let r = 1; r < values.length; r++) {
+    const isMatch = cols.every(({ key, idx }) => {
+      let cell = values[r][idx];
+      if (key === "date") cell = formatDate(cell);
+      return cell === matchCols[key];
+    });
+    if (isMatch) {
+      sheet.deleteRow(r + 1);
+      return true;
+    }
+  }
+  return false;
 }
 
 function readSheet(name) {

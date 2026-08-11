@@ -207,6 +207,8 @@
   <div class="links-row" id="v-links"></div>
 
   <div class="cifra" id="v-cifra"></div>
+
+  <button onclick="deleteSong()" style="margin-top:20px;width:100%;background:none;border:none;color:#b23f3f;font-size:0.82rem;font-weight:600;padding:10px;cursor:pointer;">Excluir música</button>
 </div>
 
 <script>
@@ -409,6 +411,25 @@ function closeSong() {
   document.getElementById("view").classList.remove("active");
   document.getElementById("song-list").style.display = "flex";
   document.querySelector("header").style.display = "block";
+}
+
+async function deleteSong() {
+  if (!current) return;
+  if (!confirm(`Excluir "${current.title}"? Isso apaga a linha na planilha, não tem como desfazer.`)) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "deleteMusica", title: current.title }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao excluir");
+    SONGS = SONGS.filter(s => s.title !== current.title);
+    closeSong();
+    renderList();
+  } catch (e) {
+    alert("Não deu pra excluir agora (" + e.message + "). Tenta de novo.");
+  }
 }
 
 function selectSinger(name) {

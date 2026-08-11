@@ -85,10 +85,35 @@ async function load() {
         <div class="role-row"><span class="role-tag">Músicos</span><span class="role-val">${(c.musicos || []).map(m => `${m.name} (${m.instrumento})`).join(", ") || "—"}</span></div>
         <div class="role-row"><span class="role-tag">Backing</span><span class="role-val">${(c.vocalBacking || []).join(", ") || "—"}</span></div>
         ${rep ? `<div class="rep-list">${rep}</div>` : ""}
+        <button class="delete-culto-btn" data-date="${c.date}" data-label="${escapeAttr(c.label || "")}" style="margin-top:12px;width:100%;background:none;border:none;color:#b23f3f;font-size:0.78rem;font-weight:600;padding:8px;cursor:pointer;">Excluir culto</button>
       </div>`;
   }).join("");
+
+  main.querySelectorAll(".delete-culto-btn").forEach(btn => {
+    btn.addEventListener("click", () => deleteCulto(btn.dataset.date, btn.dataset.label));
+  });
 }
 load();
+
+function escapeAttr(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+async function deleteCulto(date, label) {
+  if (!confirm("Excluir este culto da escala? Não tem como desfazer.")) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "deleteEscala", date, label }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao excluir");
+    load();
+  } catch (e) {
+    alert("Não deu pra excluir agora (" + e.message + "). Tenta de novo.");
+  }
+}
 </script>
 </body>
 </html>
