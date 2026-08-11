@@ -81,7 +81,7 @@ async function load() {
         <div class="culto-date">${dateLabel}</div>
         <div class="culto-label">${c.label || ""}</div>
         <div class="role-row"><span class="role-tag">Ministro</span><span class="role-val">${c.ministro || "—"}</span></div>
-        <div class="role-row"><span class="role-tag">Músicos</span><span class="role-val">${(c.musicos || []).join(", ") || "—"}</span></div>
+        <div class="role-row"><span class="role-tag">Músicos</span><span class="role-val">${(c.musicos || []).map(m => `${m.name} (${m.instrumento})`).join(", ") || "—"}</span></div>
         <div class="role-row"><span class="role-tag">Backing</span><span class="role-val">${(c.vocalBacking || []).join(", ") || "—"}</span></div>
         ${rep ? `<div class="rep-list">${rep}</div>` : ""}
       </div>`;

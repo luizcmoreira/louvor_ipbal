@@ -78,7 +78,7 @@ async function load() {
 
     const chips = [
       c.ministro ? `<span class="escala-chip"><b>${c.ministro}</b> — Ministro</span>` : "",
-      ...(c.musicos || []).map(m => `<span class="escala-chip"><b>${m}</b> — Músico</span>`),
+      ...(c.musicos || []).map(m => `<span class="escala-chip"><b>${m.name}</b> — ${m.instrumento}</span>`),
       ...(c.vocalBacking || []).map(m => `<span class="escala-chip"><b>${m}</b> — Backing</span>`),
     ].filter(Boolean).join("");
 

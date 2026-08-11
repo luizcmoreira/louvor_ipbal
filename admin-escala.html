@@ -17,6 +17,14 @@
     border:1px solid #dde3da; border-radius:20px; padding:7px 12px; background:#ffffff; cursor:pointer;
   }
   .check-grid input { width:auto; }
+  .musico-row {
+    display:flex; align-items:center; gap:10px; border:1px solid #dde3da; border-radius:12px;
+    padding:9px 12px; margin-top:8px; background:#ffffff;
+  }
+  .musico-row label { margin-top:0; display:flex; align-items:center; gap:8px; font-size:0.9rem; color:#1c2620; flex:1; }
+  .musico-row input[type=checkbox] { width:auto; }
+  .musico-row select { flex:1; opacity:0.4; }
+  .musico-row select:not(:disabled) { opacity:1; }
   button { margin-top:18px; padding:12px 18px; border-radius:8px; border:none; background:#1e6b3f; color:#ffffff; font-weight:700; font-size:1rem; cursor:pointer; width:100%; }
   #out { margin-top:16px; white-space:pre-wrap; background:#eef2ec; border:1px solid #dde3da; border-radius:8px; padding:12px; font-family: ui-monospace, monospace; font-size:0.85rem; }
   .copybtn { background:#ffffff; color:#1c2620; border:1px solid #dde3da; margin-top:8px; }
@@ -37,7 +45,7 @@
 <select id="ministro"></select>
 
 <label>Músicos</label>
-<div class="check-grid" id="musicos"></div>
+<div id="musicos"></div>
 
 <label>Vocal (backing)</label>
 <div class="check-grid" id="backing"></div>
@@ -64,8 +72,13 @@ async function init() {
   document.getElementById("ministro").innerHTML = ministros.map(p => `<option value="${p.name}">${p.name}</option>`).join("");
 
   const musicos = people.filter(p => (p.instrumentos || []).length > 0);
-  document.getElementById("musicos").innerHTML = musicos.map(p =>
-    `<label><input type="checkbox" value="${p.name}" class="musico-cb"> ${p.name}</label>`).join("");
+  document.getElementById("musicos").innerHTML = musicos.map(p => {
+    const opts = p.instrumentos.map(i => `<option value="${i}">${i}</option>`).join("");
+    return `<div class="musico-row">
+      <label><input type="checkbox" value="${p.name}" class="musico-cb" onchange="toggleMusico(this)"> ${p.name}</label>
+      <select class="musico-instrumento" data-name="${p.name}" disabled>${opts}</select>
+    </div>`;
+  }).join("");
 
   const backing = people.filter(p => p.vocal === "backing");
   document.getElementById("backing").innerHTML = backing.map(p =>
@@ -79,12 +92,24 @@ init();
 function esc(s) { return (s || "").replace(/\\/g,"\\\\").replace(/"/g,'\\"'); }
 function checked(cls) { return [...document.querySelectorAll("." + cls + ":checked")].map(el => el.value); }
 
+function toggleMusico(cb) {
+  const row = cb.closest(".musico-row");
+  row.querySelector(".musico-instrumento").disabled = !cb.checked;
+}
+
+function musicosEscolhidos() {
+  return [...document.querySelectorAll(".musico-cb:checked")].map(cb => {
+    const row = cb.closest(".musico-row");
+    return { name: cb.value, instrumento: row.querySelector(".musico-instrumento").value };
+  });
+}
+
 function gerar() {
   const entry = {
     date: document.getElementById("date").value,
     label: document.getElementById("label").value,
     ministro: document.getElementById("ministro").value,
-    musicos: checked("musico-cb"),
+    musicos: musicosEscolhidos(),
     vocalBacking: checked("backing-cb"),
     repertorio: checked("rep-cb"),
   };
