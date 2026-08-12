@@ -22,13 +22,6 @@
   .culto-date { font-size:0.78rem; font-weight:700; color:var(--accent); text-transform:capitalize; }
   .culto-label { font-size:1.08rem; font-weight:700; margin:2px 0 14px; }
 
-  .escala-strip { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
-  .escala-chip {
-    font-size:0.76rem; background:var(--card-2); color:var(--muted); border-radius:8px;
-    padding:5px 10px; line-height:1.4;
-  }
-  .escala-chip b { color:var(--text); }
-
   .rep-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin-bottom:8px; }
   .rep-item {
     display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -43,9 +36,12 @@
 <script src="config.js"></script>
 <body>
 
-<header>
-  <a class="home-link" href="index.html">← Início</a>
-  <h1>Ensaios — próximos cultos</h1>
+<header style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+  <div>
+    <a class="home-link" href="index.html">← Início</a>
+    <h1>Ensaios — próximos cultos</h1>
+  </div>
+  <a href="escala.html" style="font-size:0.8rem;font-weight:700;color:var(--accent);text-decoration:none;border:1px solid var(--border);padding:7px 12px;border-radius:20px;white-space:nowrap;">Ver escala →</a>
 </header>
 
 <main id="main"></main>
@@ -77,12 +73,6 @@ async function load() {
   main.innerHTML = upcoming.map(c => {
     const dateLabel = new Date(c.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
 
-    const chips = [
-      c.ministro ? `<span class="escala-chip"><b>${c.ministro}</b> — Ministro</span>` : "",
-      ...(c.musicos || []).map(m => `<span class="escala-chip"><b>${m.name}</b> — ${m.instrumento}</span>`),
-      ...(c.vocalBacking || []).map(m => `<span class="escala-chip"><b>${m}</b> — Backing</span>`),
-    ].filter(Boolean).join("");
-
     const rep = (c.repertorio || []).map(title => {
       const song = byTitle[title];
       const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "?") : "?";
@@ -94,7 +84,6 @@ async function load() {
       <div class="culto">
         <div class="culto-date">${dateLabel}</div>
         <div class="culto-label">${c.label || ""}</div>
-        ${chips ? `<div class="escala-strip">${chips}</div>` : ""}
         ${rep ? `<div class="rep-title">Repertório</div>${rep}` : `<p style="color:var(--muted);font-size:0.85rem;">Repertório ainda não definido.</p>`}
       </div>`;
   }).join("");
