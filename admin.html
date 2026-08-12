@@ -19,11 +19,22 @@
   }
   button { margin-top:16px; padding:12px 18px; border-radius:8px; border:none; background:#1e6b3f; color:#ffffff; font-weight:700; font-size:1rem; cursor:pointer; width:100%; }
   .hint { font-size:0.78rem; color:#5c665f; margin-top:6px; }
+
+  .cifra-editor { display:flex; gap:10px; margin-top:8px; align-items:stretch; }
+  .tag-col { display:flex; flex-direction:column; gap:6px; flex:0 0 116px; }
   .tag-btn {
+    width:100%; margin-top:0; text-align:left;
     font-size:0.78rem; font-weight:600; color:#1c2620; background:#eef2ec;
-    border:1px solid #dde3da; border-radius:20px; padding:6px 12px; cursor:pointer;
+    border:1px solid #dde3da; border-radius:8px; padding:8px 10px; cursor:pointer;
   }
   .tag-btn:active { background:#1e6b3f; color:#fff; }
+  #chordpro { flex:1; min-height:380px; margin-top:0; }
+  @media (max-width: 560px) {
+    .cifra-editor { flex-direction:column; }
+    .tag-col { flex-direction:row; flex-wrap:wrap; flex-basis:auto; }
+    .tag-btn { width:auto; flex:0 0 auto; }
+    #chordpro { min-height:260px; }
+  }
 </style>
 </head>
 <script src="config.js"></script>
@@ -52,19 +63,21 @@
 <label><input type="checkbox" id="isNew" style="width:auto;display:inline"> É música nova (categoria "Novas")</label>
 
 <label>Cifra (formato ChordPro — acorde colado antes da palavra, entre colchetes)</label>
-<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;margin-bottom:6px;">
-  <button type="button" class="tag-btn" data-tag="[Intro]">Intro</button>
-  <button type="button" class="tag-btn" data-tag="[Solo]">Solo</button>
-  <button type="button" class="tag-btn" data-tag="[Break]">Break</button>
-  <button type="button" class="tag-btn" data-tag="[Repete 2x]">Repetir 2x</button>
-  <button type="button" class="tag-btn" data-tag="[Repete 3x]">Repetir 3x</button>
-  <button type="button" class="tag-btn" data-tag="[Repete 4x]">Repetir 4x</button>
-  <button type="button" class="tag-btn" data-tag="[Repete 8x]">Repetir 8x</button>
-  <button type="button" class="tag-btn" data-tag="[Volta do início]">Voltar do início</button>
-</div>
 <p class="hint" style="margin-bottom:6px;">Pode colar a cifra de outro site direto aqui (formato acorde-em-cima-da-letra) — a conversão pros colchetes acontece automaticamente.</p>
-<textarea id="chordpro" placeholder="[G]Te agradeço [D]Senhor
+<div class="cifra-editor">
+  <div class="tag-col">
+    <button type="button" class="tag-btn" data-tag="[Intro]">Intro</button>
+    <button type="button" class="tag-btn" data-tag="[Solo]">Solo</button>
+    <button type="button" class="tag-btn" data-tag="[Break]">Break</button>
+    <button type="button" class="tag-btn" data-tag="[Repete 2x]">Repetir 2x</button>
+    <button type="button" class="tag-btn" data-tag="[Repete 3x]">Repetir 3x</button>
+    <button type="button" class="tag-btn" data-tag="[Repete 4x]">Repetir 4x</button>
+    <button type="button" class="tag-btn" data-tag="[Repete 8x]">Repetir 8x</button>
+    <button type="button" class="tag-btn" data-tag="[Volta do início]">Voltar do início</button>
+  </div>
+  <textarea id="chordpro" placeholder="[G]Te agradeço [D]Senhor
 [Em]Por tudo o [C]que fizeste"></textarea>
+</div>
 
 <button onclick="salvar()" id="save-btn">Salvar música</button>
 <button onclick="excluir()" id="delete-btn" style="display:none;background:none;color:#b23f3f;font-weight:600;margin-top:10px;">Excluir música</button>
