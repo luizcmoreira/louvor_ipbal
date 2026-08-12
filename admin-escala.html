@@ -62,12 +62,7 @@
   <div><label>Dia do ensaio</label><input type="date" id="ensaioData"></div>
   <div><label>Horário do ensaio</label><input type="time" id="ensaioHorario"></div>
 </div>
-
-<label>Observações — antes do ensaio</label>
-<textarea id="obsAntes" style="min-height:70px;" placeholder="Ex: levar cabo extra, chegar 15 min antes..."></textarea>
-
-<label>Observações — depois do ensaio</label>
-<textarea id="obsDepois" style="min-height:70px;" placeholder="Ex: ajustar o tom do refrão, revisar a introdução..."></textarea>
+<p class="hint">As observações antes/depois do ensaio agora se editam direto no card da Escala/Ensaios, sem precisar entrar aqui.</p>
 
 <button onclick="salvar()" id="save-btn">Salvar na escala</button>
 <button onclick="excluirCulto()" id="delete-btn" style="display:none;background:none;color:#b23f3f;font-weight:600;">Excluir culto</button>
@@ -149,8 +144,6 @@ async function prefillEdit() {
 
   document.getElementById("ensaioData").value = c.ensaioData || "";
   document.getElementById("ensaioHorario").value = c.ensaioHorario || "";
-  document.getElementById("obsAntes").value = c.obsAntes || "";
-  document.getElementById("obsDepois").value = c.obsDepois || "";
 }
 
 async function excluirCulto() {
@@ -203,8 +196,6 @@ async function salvar() {
     repertorio: checked("rep-cb").join(", "),
     ensaioData: document.getElementById("ensaioData").value,
     ensaioHorario: document.getElementById("ensaioHorario").value,
-    obsAntes: document.getElementById("obsAntes").value,
-    obsDepois: document.getElementById("obsDepois").value,
   };
   const btn = document.getElementById("save-btn");
   const msg = document.getElementById("msg");

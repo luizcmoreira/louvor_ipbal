@@ -32,6 +32,17 @@
     border-radius:20px; padding:5px 12px; text-decoration:none;
   }
   .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:40px 20px; }
+
+  .obs-wrap { margin-top:8px; }
+  .obs-view {
+    font-size:0.82rem; background:rgba(196,138,23,0.10); border-radius:8px; padding:7px 10px; margin:0;
+    display:flex; align-items:baseline; gap:6px; line-height:1.4;
+  }
+  .obs-edit-icon { margin-left:auto; cursor:pointer; flex-shrink:0; background:none; border:none; font-size:0.85rem; padding:0; }
+  .obs-add-btn {
+    font-size:0.78rem; font-weight:600; color:var(--muted); background:var(--card-2);
+    border:1px dashed var(--border); border-radius:8px; padding:7px 10px; cursor:pointer; width:100%; text-align:left;
+  }
 </style>
 </head>
 <script src="config.js"></script>
@@ -88,8 +99,8 @@ async function load() {
         <div class="role-row" style="margin-top:12px;"><span class="role-tag">Ministro</span><span class="role-val">${c.ministro || "—"}</span></div>
         <div class="role-row"><span class="role-tag">Músicos</span><span class="role-val">${(c.musicos || []).map(m => `${m.name} (${m.instrumento})`).join(", ") || "—"}</span></div>
         <div class="role-row"><span class="role-tag">Backing</span><span class="role-val">${(c.vocalBacking || []).join(", ") || "—"}</span></div>
-        ${c.obsAntes ? `<p style="font-size:0.82rem;background:rgba(196,138,23,0.10);border-radius:8px;padding:7px 10px;margin:8px 0 0;"><b>Antes:</b> ${c.obsAntes}</p>` : ""}
-        ${c.obsDepois ? `<p style="font-size:0.82rem;background:rgba(196,138,23,0.10);border-radius:8px;padding:7px 10px;margin:8px 0 0;"><b>Depois:</b> ${c.obsDepois}</p>` : ""}
+        ${obsBlock(c, "obsAntes", "Antes do ensaio")}
+        ${obsBlock(c, "obsDepois", "Depois do ensaio")}
         ${rep ? `<div class="rep-list">${rep}</div>` : ""}
         <div style="display:flex;gap:8px;margin-top:12px;">
           <a href="admin-escala.html?date=${encodeURIComponent(c.date)}&label=${encodeURIComponent(c.label || "")}" style="flex:1;text-align:center;border:1px solid var(--border);border-radius:10px;padding:8px;font-size:0.78rem;font-weight:600;color:var(--accent);text-decoration:none;">Editar</a>
@@ -106,6 +117,57 @@ load();
 
 function escapeAttr(s) {
   return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+// ── Observação antes/depois do ensaio — editável direto no card ────────────
+function obsBlock(c, field, labelText) {
+  const val = c[field] || "";
+  return `<div class="obs-wrap" data-date="${c.date}" data-label="${escapeAttr(c.label || "")}" data-field="${field}" data-label-text="${labelText}" data-value="${escapeAttr(val)}">
+    ${val
+      ? `<p class="obs-view"><span><b>${labelText}:</b> ${val}</span><button type="button" class="obs-edit-icon" title="Editar">✏️</button></p>`
+      : `<button type="button" class="obs-add-btn">+ ${labelText}</button>`}
+  </div>`;
+}
+
+document.addEventListener("click", (ev) => {
+  const trigger = ev.target.closest(".obs-add-btn, .obs-edit-icon");
+  if (!trigger) return;
+  openObsEditor(trigger.closest(".obs-wrap"));
+});
+
+function openObsEditor(wrap) {
+  const { date, label, field, labelText, value } = wrap.dataset;
+  wrap.innerHTML = `
+    <label style="font-size:0.76rem;font-weight:700;color:var(--muted);display:block;margin-bottom:4px;">${labelText}</label>
+    <textarea class="obs-textarea" style="width:100%;min-height:70px;border-radius:8px;border:1px solid var(--border);padding:8px;font-family:inherit;font-size:0.85rem;box-sizing:border-box;">${value}</textarea>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <button type="button" class="obs-cancel-btn" style="flex:1;padding:7px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-size:0.78rem;font-weight:600;cursor:pointer;">Cancelar</button>
+      <button type="button" class="obs-save-btn" style="flex:1;padding:7px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:0.78rem;font-weight:700;cursor:pointer;">Salvar</button>
+    </div>`;
+  wrap.querySelector(".obs-textarea").focus();
+  wrap.querySelector(".obs-cancel-btn").addEventListener("click", () => load());
+  wrap.querySelector(".obs-save-btn").addEventListener("click", () => saveObs(wrap, date, label, field));
+}
+
+async function saveObs(wrap, date, label, field) {
+  const value = wrap.querySelector(".obs-textarea").value;
+  const btn = wrap.querySelector(".obs-save-btn");
+  btn.disabled = true; btn.textContent = "Salvando…";
+  const payload = { action: "updateEscala", matchDate: date, matchLabel: label, date, label };
+  payload[field] = value;
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao salvar");
+    load();
+  } catch (e) {
+    alert("Não deu pra salvar: " + e.message);
+    btn.disabled = false; btn.textContent = "Salvar";
+  }
 }
 
 async function deleteCulto(date, label) {
