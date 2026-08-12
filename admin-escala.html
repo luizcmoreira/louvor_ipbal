@@ -9,7 +9,10 @@
   .home-link { display:inline-flex; align-items:center; gap:4px; color:#1e6b3f; text-decoration:none; font-size:0.82rem; font-weight:700; }
   h1 { font-size:1.1rem; margin-top:14px; }
   label { display:block; margin-top:14px; font-size:0.85rem; color:#5c665f; }
-  input, select { width:100%; padding:9px; border-radius:8px; border:1px solid #dde3da; background:#ffffff; color:#1c2620; font-size:0.95rem; box-sizing:border-box; }
+  input, select, textarea { width:100%; padding:9px; border-radius:8px; border:1px solid #dde3da; background:#ffffff; color:#1c2620; font-size:0.95rem; box-sizing:border-box; font-family:inherit; }
+  .row3 { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .row3 > div { flex:1 1 140px; }
+  .row3 label { margin-top:0; }
   input:focus, select:focus { outline:none; border-color:#1e6b3f; box-shadow:0 0 0 3px rgba(30,107,63,0.15); }
   .check-grid { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
   .check-grid label {
@@ -54,6 +57,17 @@
 <label>Repertório</label>
 <div class="check-grid" id="repertorio"></div>
 <p class="hint">O tom mostrado na Escala/Ensaios é o do ministro selecionado acima (ou o tom original, se não houver preset dele pra essa música).</p>
+
+<div class="row3">
+  <div><label>Dia do ensaio</label><input type="date" id="ensaioData"></div>
+  <div><label>Horário do ensaio</label><input type="time" id="ensaioHorario"></div>
+</div>
+
+<label>Observações — antes do ensaio</label>
+<textarea id="obsAntes" style="min-height:70px;" placeholder="Ex: levar cabo extra, chegar 15 min antes..."></textarea>
+
+<label>Observações — depois do ensaio</label>
+<textarea id="obsDepois" style="min-height:70px;" placeholder="Ex: ajustar o tom do refrão, revisar a introdução..."></textarea>
 
 <button onclick="salvar()" id="save-btn">Salvar na escala</button>
 <button onclick="excluirCulto()" id="delete-btn" style="display:none;background:none;color:#b23f3f;font-weight:600;">Excluir culto</button>
@@ -132,6 +146,11 @@ async function prefillEdit() {
     const cb = document.querySelector(`.rep-cb[value="${CSS.escape(title)}"]`);
     if (cb) cb.checked = true;
   });
+
+  document.getElementById("ensaioData").value = c.ensaioData || "";
+  document.getElementById("ensaioHorario").value = c.ensaioHorario || "";
+  document.getElementById("obsAntes").value = c.obsAntes || "";
+  document.getElementById("obsDepois").value = c.obsDepois || "";
 }
 
 async function excluirCulto() {
@@ -182,6 +201,10 @@ async function salvar() {
     musicos,
     vocalBacking: checked("backing-cb").join(", "),
     repertorio: checked("rep-cb").join(", "),
+    ensaioData: document.getElementById("ensaioData").value,
+    ensaioHorario: document.getElementById("ensaioHorario").value,
+    obsAntes: document.getElementById("obsAntes").value,
+    obsDepois: document.getElementById("obsDepois").value,
   };
   const btn = document.getElementById("save-btn");
   const msg = document.getElementById("msg");

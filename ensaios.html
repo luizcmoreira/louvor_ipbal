@@ -20,7 +20,11 @@
     box-shadow:0 1px 3px rgba(20,30,20,0.05);
   }
   .culto-date { font-size:0.78rem; font-weight:700; color:var(--accent); text-transform:capitalize; }
-  .culto-label { font-size:1.08rem; font-weight:700; margin:2px 0 14px; }
+  .culto-label { font-size:1.08rem; font-weight:700; margin:2px 0; }
+  .culto-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:14px; }
+  .escala-link { font-size:0.74rem; font-weight:700; color:var(--accent); text-decoration:none; white-space:nowrap; flex-shrink:0; }
+  .ensaio-info { font-size:0.82rem; color:var(--text); background:var(--card-2); border-radius:8px; padding:8px 10px; margin:0 0 12px; }
+  .obs-box { font-size:0.82rem; color:var(--text); background:rgba(196,138,23,0.10); border-radius:8px; padding:8px 10px; margin:12px 0 0; line-height:1.4; }
 
   .rep-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin-bottom:8px; }
   .rep-item {
@@ -80,11 +84,23 @@ async function load() {
       return `<a class="rep-item" href="${href}"><span class="rep-item-title">${title}</span><span class="rep-item-tone">${tone}</span></a>`;
     }).join("");
 
+    const ensaioLabel = c.ensaioData
+      ? new Date(c.ensaioData + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) + (c.ensaioHorario ? ` às ${c.ensaioHorario}` : "")
+      : "";
+
     return `
       <div class="culto">
-        <div class="culto-date">${dateLabel}</div>
-        <div class="culto-label">${c.label || ""}</div>
+        <div class="culto-top">
+          <div>
+            <div class="culto-date">${dateLabel}</div>
+            <div class="culto-label">${c.label || ""}</div>
+          </div>
+          <a class="escala-link" href="escala.html#culto-${encodeURIComponent(c.date)}">Ver escala →</a>
+        </div>
+        ${ensaioLabel ? `<p class="ensaio-info">🗓️ Ensaio: <b>${ensaioLabel}</b></p>` : ""}
+        ${c.obsAntes ? `<p class="obs-box"><b>Antes do ensaio:</b> ${c.obsAntes}</p>` : ""}
         ${rep ? `<div class="rep-title">Repertório</div>${rep}` : `<p style="color:var(--muted);font-size:0.85rem;">Repertório ainda não definido.</p>`}
+        ${c.obsDepois ? `<p class="obs-box"><b>Depois do ensaio:</b> ${c.obsDepois}</p>` : ""}
       </div>`;
   }).join("");
 }

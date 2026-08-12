@@ -5,9 +5,11 @@
  * Abas esperadas na planilha, com cabeçalho na linha 1:
  *
  * Musicas:      title | originalKey | tom_Ricardo | tom_Kariny | tom_Luiz | chordpro | status | isNew | videoCompleta | videoCongregacional
- * Escala:       date | label | ministro | musicos | vocalBacking | repertorio
+ * Escala:       date | label | ministro | musicos | vocalBacking | repertorio | ensaioData | ensaioHorario | obsAntes | obsDepois
  *               (musicos: "Nome:Instrumento, Nome:Instrumento" — ex: "Luiz:Teclado, Caio:Guitarra")
  *               (vocalBacking / repertorio: lista separada por vírgula)
+ *               (ensaioData: yyyy-mm-dd do ensaio prévio, separado da data do culto)
+ *               (obsAntes/obsDepois: observações livres, antes e depois do ensaio)
  * Participantes: name | vocal | instrumentos
  *               (vocal: ministro / ministra / backing / vazio)
  *               (instrumentos: lista separada por vírgula)
@@ -42,11 +44,13 @@ function doPost(e) {
     ss.getSheetByName("Escala").appendRow([
       body.date, body.label || "", body.ministro || "",
       body.musicos || "", body.vocalBacking || "", body.repertorio || "",
+      body.ensaioData || "", body.ensaioHorario || "", body.obsAntes || "", body.obsDepois || "",
     ]);
   } else if (body.action === "updateEscala") {
     updateRowByMultiMatch("Escala",
       { date: body.matchDate, label: body.matchLabel },
-      { date: body.date, label: body.label, ministro: body.ministro, musicos: body.musicos, vocalBacking: body.vocalBacking, repertorio: body.repertorio });
+      { date: body.date, label: body.label, ministro: body.ministro, musicos: body.musicos, vocalBacking: body.vocalBacking, repertorio: body.repertorio,
+        ensaioData: body.ensaioData, ensaioHorario: body.ensaioHorario, obsAntes: body.obsAntes, obsDepois: body.obsDepois });
   } else if (body.action === "deleteEscala") {
     deleteRowByMatch("Escala", { date: body.date, label: body.label });
   } else {
@@ -162,6 +166,10 @@ function mapEscala(o) {
     musicos: parsePairs(o.musicos),
     vocalBacking: parseList(o.vocalBacking),
     repertorio: parseList(o.repertorio),
+    ensaioData: formatDate(o.ensaioData) || "",
+    ensaioHorario: o.ensaioHorario || "",
+    obsAntes: o.obsAntes || "",
+    obsDepois: o.obsDepois || "",
   };
 }
 

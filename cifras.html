@@ -181,11 +181,17 @@
     border-radius: 6px;
     width: fit-content;
   }
+  #print-cifra { display: none; }
   @media print {
-    header, .links-row, #edit-cifra-box, .back-btn,
+    header, .links-row, #edit-cifra-box, .back-btn, #v-cifra,
     #view > button, .tone-control button { display: none !important; }
     body { padding-bottom: 0; }
-    .cifra { box-shadow: none; border: none; padding: 0; }
+    #print-cifra {
+      display: block; box-shadow: none; border: none; padding: 0;
+      white-space: pre-wrap; line-height: 1.55; font-size: 0.85rem;
+    }
+    #print-cifra .chord { padding: 0 4px; margin: 0 1px 0 0; }
+    #print-cifra .structure-tag { margin: 8px 0 3px; padding: 2px 8px; }
   }
 
   .song-item.status-bem { background: rgba(30, 107, 63, 0.08); border-color: rgba(30, 107, 63, 0.3); }
@@ -237,10 +243,12 @@
   <div class="links-row" id="v-links"></div>
   <div class="links-row">
     <a href="#" onclick="toggleEditCifra(); return false;" id="edit-cifra-toggle">✏️ Editar cifra</a>
-    <a href="#" onclick="window.print(); return false;">🖨️ Imprimir / baixar</a>
+    <a href="#" onclick="window.print(); return false;">🖨️ Imprimir</a>
+    <a href="#" onclick="downloadCifra(); return false;">⬇️ Baixar</a>
   </div>
 
   <div class="cifra" id="v-cifra"></div>
+  <div id="print-cifra"></div>
 
   <div id="edit-cifra-box" style="display:none;">
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
@@ -630,6 +638,47 @@ async function saveEditCifra() {
     btn.disabled = false; btn.textContent = "Salvar";
   }
 }
+
+// ── Baixar (.txt) e imprimir (mais enxuto: trechos repetidos viram "(repete)") ──
+function currentTransposedText() {
+  if (!current) return "";
+  const presetKey = activeSinger ? current.presets[activeSinger] : current.originalKey;
+  const baseSemitones = semitonesBetweenKeys(current.originalKey, presetKey);
+  const totalSemitones = (baseSemitones + manualOffset + 120) % 12;
+  return transposeChordPro(current.chordpro || "", totalSemitones);
+}
+
+function downloadCifra() {
+  if (!current) return;
+  const tone = document.getElementById("v-tone").textContent;
+  const header = `${current.title} — Tom: ${tone}\n\n`;
+  const blob = new Blob([header + currentTransposedText()], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = current.title.replace(/[\/\\?%*:|"<>]/g, "-") + ".txt";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Bloco (trecho entre linhas em branco) idêntico ao anterior vira "(repete)" —
+// evita imprimir o refrão inteiro de novo cada vez que ele se repete.
+function buildPrintCifra(text) {
+  const stanzas = text.split(/\n\s*\n+/);
+  const out = [];
+  let lastTrimmed = null;
+  for (const st of stanzas) {
+    const trimmed = st.trim();
+    out.push(trimmed && trimmed === lastTrimmed ? "(repete)" : st);
+    lastTrimmed = trimmed;
+  }
+  return out.join("\n\n");
+}
+
+window.addEventListener("beforeprint", () => {
+  if (!current) return;
+  document.getElementById("print-cifra").innerHTML = renderChordProToHTML(buildPrintCifra(currentTransposedText()));
+});
 
 function selectSinger(name) {
   activeSinger = name;

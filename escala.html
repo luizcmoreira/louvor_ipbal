@@ -77,13 +77,19 @@ async function load() {
       const href = `cifras.html?song=${encodeURIComponent(title)}&singer=${encodeURIComponent(c.ministro || "")}`;
       return `<a class="rep-pill" href="${href}">${title}${tone ? " · " + tone : ""}</a>`;
     }).join("");
+    const ensaioLabel = c.ensaioData
+      ? new Date(c.ensaioData + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) + (c.ensaioHorario ? ` às ${c.ensaioHorario}` : "")
+      : "";
     return `
-      <div class="culto">
+      <div class="culto" id="culto-${encodeURIComponent(c.date)}">
         <div class="culto-date">${dateLabel}</div>
         <div class="culto-label">${c.label || ""}</div>
-        <div class="role-row"><span class="role-tag">Ministro</span><span class="role-val">${c.ministro || "—"}</span></div>
+        ${ensaioLabel ? `<p style="font-size:0.82rem;background:var(--card-2);border-radius:8px;padding:7px 10px;margin:8px 0 0;">🗓️ Ensaio: <b>${ensaioLabel}</b></p>` : ""}
+        <div class="role-row" style="margin-top:12px;"><span class="role-tag">Ministro</span><span class="role-val">${c.ministro || "—"}</span></div>
         <div class="role-row"><span class="role-tag">Músicos</span><span class="role-val">${(c.musicos || []).map(m => `${m.name} (${m.instrumento})`).join(", ") || "—"}</span></div>
         <div class="role-row"><span class="role-tag">Backing</span><span class="role-val">${(c.vocalBacking || []).join(", ") || "—"}</span></div>
+        ${c.obsAntes ? `<p style="font-size:0.82rem;background:rgba(196,138,23,0.10);border-radius:8px;padding:7px 10px;margin:8px 0 0;"><b>Antes:</b> ${c.obsAntes}</p>` : ""}
+        ${c.obsDepois ? `<p style="font-size:0.82rem;background:rgba(196,138,23,0.10);border-radius:8px;padding:7px 10px;margin:8px 0 0;"><b>Depois:</b> ${c.obsDepois}</p>` : ""}
         ${rep ? `<div class="rep-list">${rep}</div>` : ""}
         <div style="display:flex;gap:8px;margin-top:12px;">
           <a href="admin-escala.html?date=${encodeURIComponent(c.date)}&label=${encodeURIComponent(c.label || "")}" style="flex:1;text-align:center;border:1px solid var(--border);border-radius:10px;padding:8px;font-size:0.78rem;font-weight:600;color:var(--accent);text-decoration:none;">Editar</a>
