@@ -77,10 +77,15 @@
     box-shadow: 0 1px 3px rgba(20,30,20,0.05);
     transition: transform .12s ease;
   }
-  .song-item-info { flex: 1; cursor: pointer; }
+  .song-item-info { flex: 1; min-width: 0; cursor: pointer; }
   .song-item-info:active { opacity: 0.7; }
-  .song-item-title { font-size: 1.02rem; margin-bottom: 3px; font-weight: 600; }
+  .song-item-title { font-size: 1.02rem; margin-bottom: 3px; font-weight: 600; overflow-wrap: break-word; }
   .song-item .tag { color: var(--muted); font-size: 0.85rem; }
+  .song-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+  @media (max-width: 480px) {
+    .song-item { flex-direction: column; align-items: stretch; }
+    .song-actions { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+  }
   .yt-icon {
     flex-shrink: 0;
     width: 40px; height: 40px;
@@ -418,7 +423,7 @@ function renderList() {
       statusBtn.title = "Toca pra mudar o status";
       statusBtn.onclick = (ev) => cycleStatus(song._idx, ev);
       const statusWrap = document.createElement("div");
-      statusWrap.style.cssText = "display:flex;flex-direction:column;align-items:flex-end;gap:6px;";
+      statusWrap.className = "song-actions";
       statusWrap.appendChild(statusBtn);
 
       const actionsRow = document.createElement("div");
