@@ -38,6 +38,12 @@ function doPost(e) {
     ]);
   } else if (body.action === "updateMusica") {
     updateRowByMatch("Musicas", "title", body.matchTitle, body);
+    // Se o título mudou, atualiza também toda referência a essa música na
+    // Escala — senão o repertório de cultos já cadastrados fica apontando
+    // pro nome antigo (a música "some" da tela de Ensaios, tom vira "?").
+    if (body.title && body.title !== body.matchTitle) {
+      renameInEscalaRepertorio(body.matchTitle, body.title);
+    }
   } else if (body.action === "deleteMusica") {
     deleteRowByMatch("Musicas", { title: body.title });
   } else if (body.action === "addEscala") {
@@ -57,6 +63,23 @@ function doPost(e) {
     return jsonOut({ ok: false, error: "ação desconhecida" });
   }
   return jsonOut({ ok: true });
+}
+
+function renameInEscalaRepertorio(oldTitle, newTitle) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Escala");
+  if (!sheet) return;
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0];
+  const repIdx = headers.indexOf("repertorio");
+  if (repIdx === -1) return;
+  for (let r = 1; r < values.length; r++) {
+    const cell = values[r][repIdx];
+    if (!cell) continue;
+    const titles = String(cell).split(",").map(t => t.trim());
+    if (!titles.includes(oldTitle)) continue;
+    const updated = titles.map(t => t === oldTitle ? newTitle : t).join(", ");
+    sheet.getRange(r + 1, repIdx + 1).setValue(updated);
+  }
 }
 
 function updateRowByMatch(sheetName, matchCol, matchVal, patch) {
@@ -167,7 +190,7 @@ function mapEscala(o) {
     vocalBacking: parseList(o.vocalBacking),
     repertorio: parseList(o.repertorio),
     ensaioData: formatDate(o.ensaioData) || "",
-    ensaioHorario: o.ensaioHorario || "",
+    ensaioHorario: formatTime(o.ensaioHorario) || "",
     obsAntes: o.obsAntes || "",
     obsDepois: o.obsDepois || "",
   };
@@ -197,6 +220,16 @@ function parseList(s) {
 function formatDate(d) {
   if (Object.prototype.toString.call(d) === "[object Date]") {
     return Utilities.formatDate(d, "America/Sao_Paulo", "yyyy-MM-dd");
+  }
+  return d;
+}
+
+// A planilha converte um valor tipo "19:30" pra um Date interno dela mesma
+// (ancorado em 30/12/1899) — sem isso, ensaioHorario voltava um timestamp
+// completo em vez de só "HH:mm".
+function formatTime(d) {
+  if (Object.prototype.toString.call(d) === "[object Date]") {
+    return Utilities.formatDate(d, "America/Sao_Paulo", "HH:mm");
   }
   return d;
 }
