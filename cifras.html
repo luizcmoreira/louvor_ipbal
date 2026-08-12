@@ -553,6 +553,34 @@ function looksAlreadyBracketed(text) {
   return (text.match(/\[[^\]]{1,12}\]/g) || []).length >= 2;
 }
 
+function stripChords(line) {
+  return line.replace(/\[[^\]]+\]/g, "").trim();
+}
+
+// Alguns sites (Cifra Club incluso) colam a mesma linha duas vezes — uma
+// com o acorde marcado, outra "limpa" — por causa de como a página é
+// montada (versão com/sem cifra no mesmo bloco de texto). Detecta quando
+// duas linhas seguidas são a mesma letra (ignorando os acordes) e mantém
+// só uma — de preferência a que tiver o acorde.
+function dedupeChordLines(lines) {
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const next = lines[i + 1];
+    if (next !== undefined) {
+      const a = stripChords(line);
+      const b = stripChords(next);
+      if (a && a === b) {
+        out.push(/\[[^\]]+\]/.test(line) ? line : next);
+        i++;
+        continue;
+      }
+    }
+    out.push(line);
+  }
+  return out;
+}
+
 function convertCifraText(raw) {
   const lines = raw.replace(/\r\n/g, "\n").split("\n");
   const out = [];
@@ -570,7 +598,7 @@ function convertCifraText(raw) {
       out.push(line);
     }
   }
-  return out.join("\n");
+  return dedupeChordLines(out).join("\n");
 }
 
 document.getElementById("edit-cifra-text").addEventListener("paste", function (e) {
