@@ -654,12 +654,34 @@ function currentTransposedText() {
 function downloadCifra() {
   if (!current) return;
   const tone = document.getElementById("v-tone").textContent;
-  const header = `${current.title} — Tom: ${tone}\n\n`;
-  const blob = new Blob([header + currentTransposedText()], { type: "text/plain;charset=utf-8" });
+  const titleEsc = current.title.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const bodyHtml = renderChordProToHTML(buildPrintCifra(currentTransposedText()));
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>${titleEsc}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 24px 20px 60px; color: #1c2620; background: #f5f7f4; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .meta { color: #5c665f; font-size: 0.9rem; margin: 0 0 20px; }
+  .cifra { white-space: pre-wrap; line-height: 2.1; font-size: 1.1rem; background: #fff; border: 1px solid #dde3da; border-radius: 14px; padding: 20px 18px; }
+  .chord { display: inline-block; background: rgba(30,107,63,0.12); color: #1e6b3f; font-weight: 700; font-size: 0.68em; padding: 1px 7px; border-radius: 6px; margin: 0 3px 3px 0; vertical-align: 4px; }
+  .structure-tag { display: block; margin: 14px 0 6px; padding: 5px 12px; background: rgba(196,138,23,0.14); color: #96650f; font-weight: 800; font-size: 0.62em; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 6px; width: fit-content; }
+  @media print { body { background: #fff; } .cifra { border: none; padding: 0; } }
+</style>
+</head>
+<body>
+  <h1>${titleEsc}</h1>
+  <p class="meta">Tom: ${tone}</p>
+  <div class="cifra">${bodyHtml}</div>
+</body>
+</html>`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = current.title.replace(/[\/\\?%*:|"<>]/g, "-") + ".txt";
+  a.download = current.title.replace(/[\/\\?%*:|"<>]/g, "-") + ".html";
   a.click();
   URL.revokeObjectURL(url);
 }
