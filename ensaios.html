@@ -95,7 +95,10 @@ async function load() {
             <div class="culto-date">${dateLabel}</div>
             <div class="culto-label">${c.label || ""}</div>
           </div>
-          <a class="escala-link" href="escala.html#culto-${encodeURIComponent(c.date)}">Ver escala →</a>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+            <a class="escala-link" href="escala.html#culto-${encodeURIComponent(c.date)}">Ver escala →</a>
+            <a class="escala-link" href="admin-escala.html?date=${encodeURIComponent(c.date)}&label=${encodeURIComponent(c.label || "")}">✏️ Editar</a>
+          </div>
         </div>
         ${ensaioLabel ? `<p class="ensaio-info">🗓️ Ensaio: <b>${ensaioLabel}</b></p>` : ""}
         ${c.obsAntes ? `<p class="obs-box"><b>Antes do ensaio:</b> ${c.obsAntes}</p>` : ""}
