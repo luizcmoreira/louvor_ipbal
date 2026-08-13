@@ -414,7 +414,7 @@ function renderList() {
   list.innerHTML = "";
   SONGS.forEach((song, realIdx) => song._idx = realIdx); // guarda índice real antes de filtrar
   SONGS
-    .filter(s => s.title.toLowerCase().includes(q))
+    .filter(s => s.title.toLowerCase().includes(q) || (s.chordpro || "").toLowerCase().includes(q))
     .filter(s => currentFilter === "todas" || (currentFilter === "novas" ? s.isNew : !s.isNew))
     .forEach(song => {
       const el = document.createElement("div");
