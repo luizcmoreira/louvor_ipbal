@@ -286,6 +286,18 @@ document.getElementById("chordpro").addEventListener("paste", function (e) {
   ta.value = ta.value.slice(0, start) + finalText + ta.value.slice(end);
   const pos = start + finalText.length;
   ta.setSelectionRange(pos, pos);
+
+  // Preenche o tom original sozinho com o primeiro acorde real que aparece
+  // na cifra colada, se o campo ainda estiver vazio — evita o erro de
+  // digitar um tom que não bate com o que foi realmente colado.
+  const keyField = document.getElementById("key");
+  if (!keyField.value.trim()) {
+    const match = finalText.match(/\[([^\]]+)\]/g);
+    if (match) {
+      const firstChord = match.map(m => m.slice(1, -1)).find(isChordToken);
+      if (firstChord) keyField.value = firstChord;
+    }
+  }
 });
 </script>
 </body>
