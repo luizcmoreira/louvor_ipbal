@@ -226,6 +226,11 @@
     <button class="filter-btn" data-f="repertorio" onclick="setFilter('repertorio')">Repertório</button>
     <button class="filter-btn" data-f="novas" onclick="setFilter('novas')">Novas</button>
   </div>
+  <div class="filter-row" style="margin-top:8px;">
+    <button class="filter-btn active" id="alpha-mode-title" onclick="setAlphaMode('title')">Por música</button>
+    <button class="filter-btn" id="alpha-mode-artist" onclick="setAlphaMode('artist')">Por banda/artista</button>
+  </div>
+  <div id="alpha-row" class="filter-row" style="margin-top:6px;"></div>
 </header>
 
 <div id="song-list"></div>
@@ -377,6 +382,44 @@ function setFilter(f) {
   renderList();
 }
 
+// ── Filtro alfabético: por título da música ou por banda/artista (a parte
+// depois de " - " no título, ex: "Renova-me - Aline Barros" → "Aline Barros"). ──
+let alphaMode = "title";
+let alphaLetter = null;
+
+function songArtist(title) {
+  const idx = title.indexOf(" - ");
+  return idx === -1 ? "" : title.slice(idx + 3).trim();
+}
+
+function setAlphaMode(mode) {
+  alphaMode = mode;
+  alphaLetter = null;
+  document.getElementById("alpha-mode-title").classList.toggle("active", mode === "title");
+  document.getElementById("alpha-mode-artist").classList.toggle("active", mode === "artist");
+  renderAlphaRow();
+  renderList();
+}
+
+function renderAlphaRow() {
+  const letters = new Set();
+  SONGS.forEach(s => {
+    const val = alphaMode === "title" ? s.title : songArtist(s.title);
+    if (val) letters.add(val[0].toUpperCase());
+  });
+  const sorted = [...letters].sort();
+  const row = document.getElementById("alpha-row");
+  row.innerHTML = `<button type="button" class="filter-btn${!alphaLetter ? " active" : ""}" data-letter="">Todas</button>` +
+    sorted.map(l => `<button type="button" class="filter-btn${alphaLetter === l ? " active" : ""}" data-letter="${l}">${l}</button>`).join("");
+  row.querySelectorAll("button").forEach(btn => {
+    btn.onclick = () => {
+      alphaLetter = btn.dataset.letter || null;
+      renderAlphaRow();
+      renderList();
+    };
+  });
+}
+
 const STATUS_ORDER = ["nao", "mal", "bem"];
 const STATUS_TEXT = { bem: "Ensaiada", mal: "Ensaiar", nao: "Não ensaiada" };
 const STATUS_CLASS = { bem: "st-bem", mal: "st-mal", nao: "st-nao" };
@@ -415,6 +458,11 @@ function renderList() {
   SONGS
     .filter(s => s.title.toLowerCase().includes(q) || (s.chordpro || "").toLowerCase().includes(q))
     .filter(s => currentFilter === "todas" || (currentFilter === "novas" ? s.isNew : !s.isNew))
+    .filter(s => {
+      if (!alphaLetter) return true;
+      const val = alphaMode === "title" ? s.title : songArtist(s.title);
+      return val && val[0].toUpperCase() === alphaLetter;
+    })
     .forEach(song => {
       const el = document.createElement("div");
       el.className = "song-item status-" + (song.status || "nao");
@@ -774,6 +822,7 @@ async function loadData() {
     list.innerHTML = `<p style='color:#e88a8a;padding:8px 0;'>Não consegui carregar dados.json (${e.message}). Confira se o arquivo está na mesma pasta ou se a URL em DADOS_URL está certa.</p>`;
     return;
   }
+  renderAlphaRow();
   renderList();
 
   // Link direto de outra página (ex: Ensaios) — ?song=Nome&singer=Nome abre
