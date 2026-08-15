@@ -89,7 +89,8 @@ async function load() {
         <div class="role-row"><span class="role-tag">Músicos</span><span class="role-val">${(c.musicos || []).map(m => `${m.name} (${m.instrumento})`).join(", ") || "—"}</span></div>
         <div class="role-row"><span class="role-tag">Backing</span><span class="role-val">${(c.vocalBacking || []).join(", ") || "—"}</span></div>
         ${rep ? `<div class="rep-list">${rep}</div>` : ""}
-        <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="share-culto-btn" data-date="${c.date}" style="width:100%;margin-top:12px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:0.82rem;font-weight:700;padding:10px;cursor:pointer;">📤 Compartilhar</button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
           <a href="admin-escala.html?date=${encodeURIComponent(c.date)}&label=${encodeURIComponent(c.label || "")}" style="flex:1;text-align:center;border:1px solid var(--border);border-radius:10px;padding:8px;font-size:0.78rem;font-weight:600;color:var(--accent);text-decoration:none;">Editar</a>
           <button class="delete-culto-btn" data-date="${c.date}" data-label="${escapeAttr(c.label || "")}" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:#b23f3f;font-size:0.78rem;font-weight:600;padding:8px;cursor:pointer;">Excluir culto</button>
         </div>
@@ -99,11 +100,64 @@ async function load() {
   main.querySelectorAll(".delete-culto-btn").forEach(btn => {
     btn.addEventListener("click", () => deleteCulto(btn.dataset.date, btn.dataset.label));
   });
+  main.querySelectorAll(".share-culto-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const c = sorted.find(x => x.date === btn.dataset.date);
+      if (c) shareCulto(c, byTitle);
+    });
+  });
 }
 load();
 
 function escapeAttr(s) {
   return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+// ── Compartilhar o culto formatado pro WhatsApp (Web Share API) ────────────
+function buildCultoShareText(c, byTitle) {
+  const dateLabel = new Date(c.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  const lines = [];
+  lines.push(`📅 *${dateLabel[0].toUpperCase()}${dateLabel.slice(1)}*`);
+  if (c.label) lines.push(`*${c.label}*`);
+  lines.push("");
+  lines.push(`🎤 Ministro: ${c.ministro || "—"}`);
+  if ((c.musicos || []).length) lines.push(`🎸 Músicos: ${c.musicos.map(m => `${m.name} (${m.instrumento})`).join(", ")}`);
+  if ((c.vocalBacking || []).length) lines.push(`🎶 Backing: ${c.vocalBacking.join(", ")}`);
+  if (c.ensaioData) {
+    const ensaioLabel = new Date(c.ensaioData + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) + (c.ensaioHorario ? ` às ${c.ensaioHorario}` : "");
+    lines.push("");
+    lines.push(`🗓️ Ensaio: ${ensaioLabel}`);
+  }
+  if ((c.repertorio || []).length) {
+    lines.push("");
+    lines.push("*Repertório:*");
+    c.repertorio.forEach((title, i) => {
+      const song = byTitle[title];
+      const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "") : "";
+      lines.push(`${i + 1}. ${title}${tone ? " (" + tone + ")" : ""}`);
+    });
+  }
+  lines.push("");
+  lines.push("_Ministério de Louvor — IP Arthur Lundgren I_");
+  return lines.join("\n");
+}
+
+async function shareCulto(c, byTitle) {
+  const text = buildCultoShareText(c, byTitle);
+  if (navigator.share) {
+    try {
+      await navigator.share({ text });
+    } catch (e) {
+      // usuário cancelou o menu de compartilhar — não é erro de verdade
+    }
+  } else {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert("Copiado! Cola direto na conversa do WhatsApp.");
+    } catch (e) {
+      alert("Não consegui copiar automaticamente. Texto:\n\n" + text);
+    }
+  }
 }
 
 async function deleteCulto(date, label) {
