@@ -153,6 +153,8 @@ function buildCultoShareText(c, byTitle) {
   }
   if (c.obsDepois) { lines.push(""); lines.push(`_Depois do ensaio:_ ${c.obsDepois}`); }
   lines.push("");
+  lines.push(`🔗 Cifras do repertório: ${location.origin}${location.pathname.replace(/[^/]*$/, "")}escala.html#culto-${encodeURIComponent(c.date)}`);
+  lines.push("");
   lines.push("_Ministério de Louvor — IP Arthur Lundgren I_");
   return lines.join("\n");
 }
