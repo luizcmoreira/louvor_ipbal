@@ -113,10 +113,67 @@ async function load() {
         ${obsBlock(c, "obsAntes", "Antes do ensaio")}
         ${rep ? `<div class="rep-title" style="margin-top:12px;">Repertório</div>${rep}` : `<p style="color:var(--muted);font-size:0.85rem;margin-top:12px;">Repertório ainda não definido.</p>`}
         ${obsBlock(c, "obsDepois", "Depois do ensaio")}
+        <button class="share-culto-btn" data-date="${c.date}" style="width:100%;margin-top:14px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:0.82rem;font-weight:700;padding:10px;cursor:pointer;">📤 Compartilhar</button>
       </div>`;
   }).join("");
+
+  main.querySelectorAll(".share-culto-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const c = upcoming.find(x => x.date === btn.dataset.date);
+      if (c) shareCulto(c, byTitle);
+    });
+  });
 }
 load();
+
+// ── Compartilhar o culto formatado pro WhatsApp (Web Share API) ────────────
+function buildCultoShareText(c, byTitle) {
+  const dateLabel = new Date(c.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  const lines = [];
+  lines.push(`📅 *${dateLabel[0].toUpperCase()}${dateLabel.slice(1)}*`);
+  if (c.label) lines.push(`*${c.label}*`);
+  lines.push("");
+  lines.push(`🎤 Ministro: ${c.ministro || "—"}`);
+  if ((c.musicos || []).length) lines.push(`🎸 Músicos: ${c.musicos.map(m => `${m.name} (${m.instrumento})`).join(", ")}`);
+  if ((c.vocalBacking || []).length) lines.push(`🎶 Backing: ${c.vocalBacking.join(", ")}`);
+  if (c.ensaioData) {
+    const ensaioLabel = new Date(c.ensaioData + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) + (c.ensaioHorario ? ` às ${c.ensaioHorario}` : "");
+    lines.push("");
+    lines.push(`🗓️ Ensaio: ${ensaioLabel}`);
+  }
+  if (c.obsAntes) { lines.push(""); lines.push(`_Antes do ensaio:_ ${c.obsAntes}`); }
+  if ((c.repertorio || []).length) {
+    lines.push("");
+    lines.push("*Repertório:*");
+    c.repertorio.forEach((title, i) => {
+      const song = byTitle[title];
+      const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "") : "";
+      lines.push(`${i + 1}. ${title}${tone ? " (" + tone + ")" : ""}`);
+    });
+  }
+  if (c.obsDepois) { lines.push(""); lines.push(`_Depois do ensaio:_ ${c.obsDepois}`); }
+  lines.push("");
+  lines.push("_Ministério de Louvor — IP Arthur Lundgren I_");
+  return lines.join("\n");
+}
+
+async function shareCulto(c, byTitle) {
+  const text = buildCultoShareText(c, byTitle);
+  if (navigator.share) {
+    try {
+      await navigator.share({ text });
+    } catch (e) {
+      // usuário cancelou o menu de compartilhar — não é erro de verdade
+    }
+  } else {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert("Copiado! Cola direto na conversa do WhatsApp.");
+    } catch (e) {
+      alert("Não consegui copiar automaticamente. Texto:\n\n" + text);
+    }
+  }
+}
 
 function escapeAttr(s) {
   return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
