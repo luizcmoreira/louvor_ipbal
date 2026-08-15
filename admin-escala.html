@@ -20,16 +20,6 @@
     border:1px solid #dde3da; border-radius:20px; padding:7px 12px; background:#ffffff; cursor:pointer;
   }
   .check-grid input { width:auto; }
-  .rep-mode-btn {
-    width:auto; margin-top:0; padding:7px 12px; border-radius:20px; border:1px solid #dde3da;
-    background:#ffffff; color:#5c665f; font-size:0.8rem; font-weight:600; cursor:pointer;
-  }
-  .rep-mode-btn.active { background:#1e6b3f; border-color:#1e6b3f; color:#fff; }
-  .rep-letter-btn {
-    width:auto; margin-top:0; min-width:30px; padding:5px 9px; border-radius:8px; border:1px solid #dde3da;
-    background:#ffffff; color:#1c2620; font-size:0.78rem; font-weight:700; cursor:pointer;
-  }
-  .rep-letter-btn.active { background:#1e6b3f; border-color:#1e6b3f; color:#fff; }
   .musico-row {
     display:flex; align-items:center; gap:10px; border:1px solid #dde3da; border-radius:12px;
     padding:9px 12px; margin-top:8px; background:#ffffff;
@@ -65,11 +55,6 @@
 <div class="check-grid" id="backing"></div>
 
 <label>Repertório</label>
-<div style="display:flex;gap:6px;margin-top:8px;">
-  <button type="button" id="rep-mode-title" class="rep-mode-btn active">Por música</button>
-  <button type="button" id="rep-mode-artist" class="rep-mode-btn">Por banda/artista</button>
-</div>
-<div id="rep-alpha" style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0;"></div>
 <div class="check-grid" id="repertorio"></div>
 <p class="hint">O tom mostrado na Escala/Ensaios é o do ministro selecionado acima (ou o tom original, se não houver preset dele pra essa música).</p>
 
@@ -121,63 +106,10 @@ async function init() {
 
   document.getElementById("repertorio").innerHTML = songs.map(s =>
     `<label><input type="checkbox" value="${s.title}" class="rep-cb"> ${s.title}</label>`).join("");
-  renderRepAlpha();
 
   if (isEditing) await prefillEdit();
 }
 init();
-
-// ── Filtro alfabético do repertório: por título da música ou por
-// banda/artista (a parte depois de " - " no título, ex: "Renova-me -
-// Aline Barros" → artista "Aline Barros"). ──────────────────────────────────
-let repMode = "title";
-let repLetterFilter = null;
-
-function songArtist(title) {
-  const idx = title.indexOf(" - ");
-  return idx === -1 ? "" : title.slice(idx + 3).trim();
-}
-
-function renderRepAlpha() {
-  const letters = new Set();
-  songs.forEach(s => {
-    const val = repMode === "title" ? s.title : songArtist(s.title);
-    if (val) letters.add(val[0].toUpperCase());
-  });
-  const sorted = [...letters].sort();
-  const alphaDiv = document.getElementById("rep-alpha");
-  alphaDiv.innerHTML = `<button type="button" class="rep-letter-btn${!repLetterFilter ? " active" : ""}" data-letter="">Todas</button>` +
-    sorted.map(l => `<button type="button" class="rep-letter-btn${repLetterFilter === l ? " active" : ""}" data-letter="${l}">${l}</button>`).join("");
-  alphaDiv.querySelectorAll(".rep-letter-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      repLetterFilter = btn.dataset.letter || null;
-      renderRepAlpha();
-      applyRepFilter();
-    });
-  });
-}
-
-function applyRepFilter() {
-  document.querySelectorAll("#repertorio label").forEach(label => {
-    const title = label.querySelector(".rep-cb").value;
-    const val = repMode === "title" ? title : songArtist(title);
-    const matches = !repLetterFilter || (val && val[0].toUpperCase() === repLetterFilter);
-    label.style.display = matches ? "" : "none";
-  });
-}
-
-document.getElementById("rep-mode-title").addEventListener("click", function () {
-  repMode = "title"; repLetterFilter = null;
-  this.classList.add("active");
-  document.getElementById("rep-mode-artist").classList.remove("active");
-  renderRepAlpha(); applyRepFilter();
-});
-document.getElementById("rep-mode-artist").addEventListener("click", function () {
-  repMode = "artist"; repLetterFilter = null;
-  this.classList.add("active");
-  document.getElementById("rep-mode-title").classList.remove("active");
-  renderRepAlpha(); applyRepFilter();
-});
 
 async function prefillEdit() {
   document.getElementById("page-title").textContent = "Editar culto";
