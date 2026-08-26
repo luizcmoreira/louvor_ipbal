@@ -27,9 +27,14 @@
     background:#fff; color:var(--text); font-size:0.92rem; box-sizing:border-box;
   }
   .add-row input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(30,107,63,0.15); }
+  .add-btns { display:flex; gap:8px; margin-top:10px; }
   .add-btn {
-    width:100%; margin-top:10px; padding:11px; border-radius:10px; border:none;
+    flex:1; padding:11px; border-radius:10px; border:none;
     background:var(--accent); color:#fff; font-weight:700; font-size:0.92rem; cursor:pointer;
+  }
+  .add-cancel {
+    padding:11px 16px; border-radius:10px; border:1px solid var(--border); background:none;
+    color:var(--muted); font-weight:700; font-size:0.92rem; cursor:pointer; display:none;
   }
   .add-msg { font-size:0.8rem; text-align:center; margin-top:8px; }
 
@@ -46,7 +51,7 @@
   .sug-title { font-weight:700; font-size:0.96rem; margin:0; }
   .sug-artist { font-size:0.82rem; color:var(--muted); margin:1px 0 0; }
   .sug-btns { margin-left:auto; display:flex; align-items:center; gap:2px; flex-shrink:0; }
-  .sug-cifra {
+  .sug-cifra, .sug-edit {
     background:none; border:none; color:var(--accent);
     font-size:1rem; cursor:pointer; padding:6px; text-decoration:none;
   }
@@ -73,7 +78,10 @@
       <input id="sug-title" placeholder="Nome da música">
       <input id="sug-artist" placeholder="Artista/banda">
     </div>
-    <button class="add-btn" id="sug-add-btn" onclick="addSugestao()">+ Adicionar sugestão</button>
+    <div class="add-btns">
+      <button class="add-btn" id="sug-add-btn" onclick="addSugestao()">+ Adicionar sugestão</button>
+      <button class="add-cancel" id="sug-cancel-btn" onclick="cancelEdit()">Cancelar</button>
+    </div>
     <p class="add-msg" id="sug-msg"></p>
   </div>
 
@@ -107,12 +115,16 @@ async function load() {
       </div>
       <div class="sug-btns">
         <a class="sug-cifra" href="admin.html?novaTitulo=${encodeURIComponent(s.artist ? s.title + " - " + s.artist : s.title)}" title="Virar cifra">🎸</a>
+        <button class="sug-edit" data-title="${escapeAttr(s.title)}" data-artist="${escapeAttr(s.artist || "")}" title="Editar">✏️</button>
         <button class="sug-del" data-title="${escapeAttr(s.title)}" data-artist="${escapeAttr(s.artist || "")}" title="Remover">✕</button>
       </div>
     </div>`).join("");
 
   list.querySelectorAll(".sug-del").forEach(btn => {
     btn.addEventListener("click", () => deleteSugestao(btn.dataset.title, btn.dataset.artist));
+  });
+  list.querySelectorAll(".sug-edit").forEach(btn => {
+    btn.addEventListener("click", () => startEdit(btn.dataset.title, btn.dataset.artist));
   });
 }
 load();
@@ -121,35 +133,59 @@ function escapeAttr(s) {
   return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
+let editing = null; // { title, artist } da sugestão original, enquanto edita
+
+function startEdit(title, artist) {
+  editing = { title, artist };
+  document.getElementById("sug-title").value = title;
+  document.getElementById("sug-artist").value = artist;
+  document.getElementById("sug-add-btn").textContent = "Salvar alterações";
+  document.getElementById("sug-cancel-btn").style.display = "block";
+  document.getElementById("sug-title").scrollIntoView({ behavior: "smooth", block: "center" });
+  document.getElementById("sug-title").focus();
+}
+
+function cancelEdit() {
+  editing = null;
+  document.getElementById("sug-title").value = "";
+  document.getElementById("sug-artist").value = "";
+  document.getElementById("sug-add-btn").textContent = "+ Adicionar sugestão";
+  document.getElementById("sug-cancel-btn").style.display = "none";
+}
+
 async function addSugestao() {
   const title = document.getElementById("sug-title").value.trim();
   const artist = document.getElementById("sug-artist").value.trim();
   const msg = document.getElementById("sug-msg");
   if (!title) { msg.style.color = "#b23f3f"; msg.textContent = "Preenche pelo menos o nome da música."; return; }
   const btn = document.getElementById("sug-add-btn");
-  btn.disabled = true; btn.textContent = "Adicionando…";
+  const isEditing = !!editing;
+  btn.disabled = true; btn.textContent = isEditing ? "Salvando…" : "Adicionando…";
   try {
+    const body = isEditing
+      ? { action: "updateSugestao", matchTitle: editing.title, matchArtist: editing.artist, title, artist }
+      : { action: "addSugestao", title, artist };
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "addSugestao", title, artist }),
+      body: JSON.stringify(body),
     });
     const raw = await res.text();
     let json;
     try { json = JSON.parse(raw); }
     catch (e) { throw new Error("resposta inesperada do servidor (verifique se a aba \"Sugestoes\" existe na planilha e se o Apps Script foi implantado com a versão mais recente)"); }
-    if (!json.ok) throw new Error(json.error || "falha ao adicionar");
-    document.getElementById("sug-title").value = "";
-    document.getElementById("sug-artist").value = "";
+    if (!json.ok) throw new Error(json.error || "falha ao salvar");
+    cancelEdit();
     msg.style.color = "#1e6b3f";
-    msg.textContent = "Sugestão adicionada!";
+    msg.textContent = isEditing ? "Sugestão atualizada!" : "Sugestão adicionada!";
     setTimeout(() => { msg.textContent = ""; }, 2000);
     load();
   } catch (e) {
     msg.style.color = "#b23f3f";
-    msg.textContent = "Não deu pra adicionar: " + e.message;
+    msg.textContent = "Não deu pra salvar: " + e.message;
   } finally {
-    btn.disabled = false; btn.textContent = "+ Adicionar sugestão";
+    btn.disabled = false;
+    btn.textContent = editing ? "Salvar alterações" : "+ Adicionar sugestão";
   }
 }
 

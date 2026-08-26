@@ -62,6 +62,10 @@ function doPost(e) {
     deleteRowByMatch("Escala", { date: body.date, label: body.label });
   } else if (body.action === "addSugestao") {
     ss.getSheetByName("Sugestoes").appendRow([body.title || "", body.artist || ""]);
+  } else if (body.action === "updateSugestao") {
+    updateRowByMultiMatch("Sugestoes",
+      { title: body.matchTitle, artist: body.matchArtist || "" },
+      { title: body.title || "", artist: body.artist || "" });
   } else if (body.action === "deleteSugestao") {
     deleteRowByMatch("Sugestoes", { title: body.title, artist: body.artist || "" });
   } else {
