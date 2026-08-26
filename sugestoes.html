@@ -45,8 +45,13 @@
   }
   .sug-title { font-weight:700; font-size:0.96rem; margin:0; }
   .sug-artist { font-size:0.82rem; color:var(--muted); margin:1px 0 0; }
+  .sug-btns { margin-left:auto; display:flex; align-items:center; gap:2px; flex-shrink:0; }
+  .sug-cifra {
+    background:none; border:none; color:var(--accent);
+    font-size:1rem; cursor:pointer; padding:6px; text-decoration:none;
+  }
   .sug-del {
-    margin-left:auto; flex-shrink:0; background:none; border:none; color:var(--muted);
+    flex-shrink:0; background:none; border:none; color:var(--muted);
     font-size:0.95rem; cursor:pointer; padding:6px;
   }
   .sug-del:hover { color:#b23f3f; }
@@ -100,7 +105,10 @@ async function load() {
         <p class="sug-title">${s.title}</p>
         ${s.artist ? `<p class="sug-artist">${s.artist}</p>` : ""}
       </div>
-      <button class="sug-del" data-title="${escapeAttr(s.title)}" data-artist="${escapeAttr(s.artist || "")}" title="Remover">✕</button>
+      <div class="sug-btns">
+        <a class="sug-cifra" href="admin.html?novaTitulo=${encodeURIComponent(s.artist ? s.title + " - " + s.artist : s.title)}" title="Virar cifra">🎸</a>
+        <button class="sug-del" data-title="${escapeAttr(s.title)}" data-artist="${escapeAttr(s.artist || "")}" title="Remover">✕</button>
+      </div>
     </div>`).join("");
 
   list.querySelectorAll(".sug-del").forEach(btn => {
@@ -126,7 +134,10 @@ async function addSugestao() {
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action: "addSugestao", title, artist }),
     });
-    const json = await res.json();
+    const raw = await res.text();
+    let json;
+    try { json = JSON.parse(raw); }
+    catch (e) { throw new Error("resposta inesperada do servidor (verifique se a aba \"Sugestoes\" existe na planilha e se o Apps Script foi implantado com a versão mais recente)"); }
     if (!json.ok) throw new Error(json.error || "falha ao adicionar");
     document.getElementById("sug-title").value = "";
     document.getElementById("sug-artist").value = "";

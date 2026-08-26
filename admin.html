@@ -86,6 +86,12 @@
 // Modo edição: chegando com ?title=X, pré-preenche tudo com o que já está
 // salvo e troca "Cadastrar" (addMusica) por "Salvar alterações" (updateMusica).
 const editingTitle = new URLSearchParams(location.search).get("title");
+// Atalho vindo da tela de Sugestões: chega com ?novaTitulo=Musica - Artista
+// pra já deixar o campo preenchido, sem entrar em modo de edição.
+const novaTitulo = new URLSearchParams(location.search).get("novaTitulo");
+if (!editingTitle && novaTitulo) {
+  document.getElementById("title").value = novaTitulo;
+}
 
 async function initEdit() {
   if (!editingTitle) return;
