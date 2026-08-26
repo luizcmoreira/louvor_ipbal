@@ -43,6 +43,8 @@
   }
   .rep-item-title { font-weight:600; font-size:0.95rem; }
   .rep-item-tone { font-size:0.85rem; font-weight:700; color:var(--accent); flex-shrink:0; }
+  .rep-section-title { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin:12px 0 6px; }
+  .rep-section-title:first-child { margin-top:0; }
   .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:40px 20px; }
 </style>
 </head>
@@ -86,11 +88,17 @@ async function load() {
   main.innerHTML = upcoming.map(c => {
     const dateLabel = new Date(c.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
 
-    const rep = (c.repertorio || []).map(title => {
-      const song = byTitle[title];
+    let songNum = 0;
+    const rep = (c.repertorio || []).map(item => {
+      if (item.type === "header") {
+        songNum = 0;
+        return `<div class="rep-section-title">${item.text}</div>`;
+      }
+      songNum++;
+      const song = byTitle[item.text];
       const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "?") : "?";
-      const href = `cifras.html?song=${encodeURIComponent(title)}&singer=${encodeURIComponent(c.ministro || "")}`;
-      return `<a class="rep-item" href="${href}"><span class="rep-item-title">${title}</span><span class="rep-item-tone">${tone}</span></a>`;
+      const href = `cifras.html?song=${encodeURIComponent(item.text)}&singer=${encodeURIComponent(c.ministro || "")}`;
+      return `<a class="rep-item" href="${href}"><span class="rep-item-title">${songNum}. ${item.text}</span><span class="rep-item-tone">${tone}</span></a>`;
     }).join("");
 
     const ensaioLabel = c.ensaioData
@@ -145,10 +153,17 @@ function buildCultoShareText(c, byTitle) {
   if ((c.repertorio || []).length) {
     lines.push("");
     lines.push("*Repertório:*");
-    c.repertorio.forEach((title, i) => {
-      const song = byTitle[title];
+    let songNum = 0;
+    c.repertorio.forEach(item => {
+      if (item.type === "header") {
+        songNum = 0;
+        lines.push(`_${item.text}_`);
+        return;
+      }
+      songNum++;
+      const song = byTitle[item.text];
       const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "") : "";
-      lines.push(`${i + 1}. ${title}${tone ? " (" + tone + ")" : ""}`);
+      lines.push(`${songNum}. ${item.text}${tone ? " (" + tone + ")" : ""}`);
     });
   }
   if (c.obsDepois) { lines.push(""); lines.push(`_Depois do ensaio:_ ${c.obsDepois}`); }

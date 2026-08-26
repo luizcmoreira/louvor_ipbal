@@ -194,7 +194,7 @@ function mapEscala(o) {
     ministro: o.ministro || "",
     musicos: parsePairs(o.musicos),
     vocalBacking: parseList(o.vocalBacking),
-    repertorio: parseList(o.repertorio),
+    repertorio: parseRepertorio(o.repertorio),
     ensaioData: formatDate(o.ensaioData) || "",
     ensaioHorario: formatTime(o.ensaioHorario) || "",
     obsAntes: o.obsAntes || "",
@@ -222,6 +222,18 @@ function parsePairs(s) {
   return String(s).split(",").map(p => p.trim()).filter(Boolean).map(p => {
     const parts = p.split(":");
     return { name: (parts[0] || "").trim(), instrumento: (parts[1] || "").trim() };
+  });
+}
+
+// Repertório é uma lista ORDENADA (a ordem em que a música toca no culto).
+// Um item que começa com "#" é um título de seção (ex: "#Prelúdio"), o resto
+// é música de verdade — assim dá pra intercalar seções e músicas mantendo
+// tudo numa coluna só, na ordem exata em que foi montado.
+function parseRepertorio(s) {
+  if (!s) return [];
+  return String(s).split(",").map(t => t.trim()).filter(Boolean).map(t => {
+    if (t.startsWith("#")) return { type: "header", text: t.slice(1).trim() };
+    return { type: "song", text: t };
   });
 }
 

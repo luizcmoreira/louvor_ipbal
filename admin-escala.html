@@ -20,6 +20,20 @@
     border:1px solid #dde3da; border-radius:20px; padding:7px 12px; background:#ffffff; cursor:pointer;
   }
   .check-grid input { width:auto; }
+  .rep-ordered-list { margin-top:8px; }
+  .rep-item {
+    display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px;
+    border:1px solid #dde3da; background:#ffffff; margin-bottom:6px; font-size:0.9rem;
+  }
+  .rep-item.header { background:#eef2ec; font-weight:700; }
+  .rep-item .rep-item-text { flex:1; }
+  .rep-item-btns { display:flex; gap:2px; flex-shrink:0; }
+  .rep-item-btns button {
+    width:26px; height:26px; margin-top:0; padding:0; border-radius:6px; border:1px solid #dde3da;
+    background:#ffffff; color:#1c2620; font-size:0.8rem; cursor:pointer; line-height:1;
+  }
+  .rep-item-btns button.danger { color:#b23f3f; }
+  .rep-empty-hint { font-size:0.82rem; color:#5c665f; padding:6px 2px; }
   .musico-row {
     display:flex; align-items:center; gap:10px; border:1px solid #dde3da; border-radius:12px;
     padding:9px 12px; margin-top:8px; background:#ffffff;
@@ -54,7 +68,13 @@
 <label>Vocal (backing)</label>
 <div class="check-grid" id="backing"></div>
 
-<label>Repertório</label>
+<label>Repertório (ordem de execução)</label>
+<div id="rep-selected" class="rep-ordered-list"></div>
+<div style="display:flex;gap:6px;margin-top:6px;">
+  <input id="rep-header-input" placeholder="Nome da seção (ex: Prelúdio)" style="flex:1;">
+  <button type="button" onclick="addRepHeader()" style="width:auto;margin-top:0;padding:0 14px;background:#eef2ec;color:#1c2620;border:1px solid #dde3da;">+ Seção</button>
+</div>
+<p class="hint" style="margin-bottom:6px;">Use as setas pra arrumar a ordem em que toca. Marca as músicas abaixo pra adicionar.</p>
 <div class="check-grid" id="repertorio"></div>
 <p class="hint">O tom mostrado na Escala/Ensaios é o do ministro selecionado acima (ou o tom original, se não houver preset dele pra essa música).</p>
 
@@ -70,6 +90,10 @@
 
 <script>
 let people = [], songs = [];
+// Lista ORDENADA do repertório — mistura músicas ({type:"song", text}) e
+// títulos de seção ({type:"header", text}, ex: "Prelúdio") na ordem exata
+// em que tocam no culto.
+let repItems = [];
 const params = new URLSearchParams(location.search);
 const editDate = params.get("date");
 const editLabel = params.get("label");
@@ -105,7 +129,8 @@ async function init() {
     `<label><input type="checkbox" value="${p.name}" class="backing-cb"> ${p.name}</label>`).join("");
 
   document.getElementById("repertorio").innerHTML = songs.map(s =>
-    `<label><input type="checkbox" value="${s.title}" class="rep-cb"> ${s.title}</label>`).join("");
+    `<label><input type="checkbox" value="${s.title}" class="rep-cb" onchange="toggleRepSong(this)"> ${s.title}</label>`).join("");
+  renderRepSelected();
 
   if (isEditing) await prefillEdit();
 }
@@ -137,10 +162,14 @@ async function prefillEdit() {
     const cb = document.querySelector(`.backing-cb[value="${CSS.escape(name)}"]`);
     if (cb) cb.checked = true;
   });
-  (c.repertorio || []).forEach(title => {
-    const cb = document.querySelector(`.rep-cb[value="${CSS.escape(title)}"]`);
+  // c.repertorio já vem como lista ORDENADA de {type:"song"|"header", text}
+  // — carrega direto no estado, sem depender da ordem dos checkboxes.
+  repItems = (c.repertorio || []).map(item => ({ ...item }));
+  repItems.filter(item => item.type === "song").forEach(item => {
+    const cb = document.querySelector(`.rep-cb[value="${CSS.escape(item.text)}"]`);
     if (cb) cb.checked = true;
   });
+  renderRepSelected();
 
   document.getElementById("ensaioData").value = c.ensaioData || "";
   document.getElementById("ensaioHorario").value = c.ensaioHorario || "";
@@ -181,6 +210,66 @@ function musicosEscolhidos() {
   });
 }
 
+// ── Repertório ordenado (músicas + seções tipo "Prelúdio") ──────────────────
+function toggleRepSong(cb) {
+  if (cb.checked) {
+    if (!repItems.some(i => i.type === "song" && i.text === cb.value)) {
+      repItems.push({ type: "song", text: cb.value });
+    }
+  } else {
+    repItems = repItems.filter(i => !(i.type === "song" && i.text === cb.value));
+  }
+  renderRepSelected();
+}
+
+function addRepHeader() {
+  const input = document.getElementById("rep-header-input");
+  const text = input.value.trim();
+  if (!text) return;
+  repItems.push({ type: "header", text });
+  input.value = "";
+  renderRepSelected();
+}
+
+function moveRepItem(idx, dir) {
+  const target = idx + dir;
+  if (target < 0 || target >= repItems.length) return;
+  [repItems[idx], repItems[target]] = [repItems[target], repItems[idx]];
+  renderRepSelected();
+}
+
+function removeRepItem(idx) {
+  const item = repItems[idx];
+  if (item.type === "song") {
+    const cb = document.querySelector(`.rep-cb[value="${CSS.escape(item.text)}"]`);
+    if (cb) cb.checked = false;
+  }
+  repItems.splice(idx, 1);
+  renderRepSelected();
+}
+
+function renderRepSelected() {
+  const box = document.getElementById("rep-selected");
+  if (repItems.length === 0) {
+    box.innerHTML = `<p class="rep-empty-hint">Nada no repertório ainda — marca uma música abaixo ou adiciona uma seção.</p>`;
+    return;
+  }
+  let songNum = 0;
+  box.innerHTML = repItems.map((item, idx) => {
+    if (item.type === "header") songNum = 0;
+    const label = item.type === "song" ? `${++songNum}. ${item.text}` : item.text;
+    return `
+      <div class="rep-item${item.type === "header" ? " header" : ""}">
+        <span class="rep-item-text">${label}</span>
+        <div class="rep-item-btns">
+          <button type="button" onclick="moveRepItem(${idx},-1)" title="Mover pra cima">↑</button>
+          <button type="button" onclick="moveRepItem(${idx},1)" title="Mover pra baixo">↓</button>
+          <button type="button" class="danger" onclick="removeRepItem(${idx})" title="Remover">✕</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
 async function salvar() {
   const date = document.getElementById("date").value;
   if (!date) { alert("Escolhe a data do culto."); return; }
@@ -193,7 +282,7 @@ async function salvar() {
     ministro: document.getElementById("ministro").value,
     musicos,
     vocalBacking: checked("backing-cb").join(", "),
-    repertorio: checked("rep-cb").join(", "),
+    repertorio: repItems.map(i => i.type === "header" ? "#" + i.text : i.text).join(", "),
     ensaioData: document.getElementById("ensaioData").value,
     ensaioHorario: document.getElementById("ensaioHorario").value,
   };

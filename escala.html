@@ -51,11 +51,15 @@
   .role-row { display:flex; gap:8px; margin-bottom:6px; font-size:0.85rem; }
   .role-tag { font-weight:700; color:var(--muted); flex-shrink:0; width:78px; }
   .role-val { color:var(--text); }
-  .rep-list { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); display:flex; flex-wrap:wrap; gap:6px; }
-  .rep-pill {
-    font-size:0.8rem; font-weight:600; color:var(--accent); background:rgba(30,107,63,0.08);
-    border-radius:20px; padding:5px 12px; text-decoration:none;
+  .rep-ordered { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+  .rep-section-title { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin:10px 0 4px; }
+  .rep-section-title:first-child { margin-top:0; }
+  .rep-song-row {
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+    padding:8px 10px; border-radius:10px; background:var(--card-2); margin-bottom:6px;
+    text-decoration:none; color:var(--text); font-size:0.86rem;
   }
+  .rep-song-tone { font-weight:700; color:var(--accent); font-size:0.8rem; flex-shrink:0; }
   .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:40px 20px; }
   .section-list { display:flex; flex-direction:column; gap:14px; }
   .history-toggle {
@@ -169,15 +173,30 @@ document.getElementById("cal-next").addEventListener("click", () => {
   renderCalendar();
 });
 
+// Repertório é uma lista ORDENADA de {type:"song"|"header", text} — headers
+// (ex: "Prelúdio") viram um rótulo e a numeração das músicas recomeça a
+// cada seção.
+function renderRepertorio(items, ministro) {
+  if (!items || items.length === 0) return "";
+  let songNum = 0;
+  const rows = items.map(item => {
+    if (item.type === "header") {
+      songNum = 0;
+      return `<div class="rep-section-title">${item.text}</div>`;
+    }
+    songNum++;
+    const song = lastByTitle[item.text];
+    const tone = song ? (song.presets?.[ministro] || song.originalKey || "") : "";
+    const href = `cifras.html?song=${encodeURIComponent(item.text)}&singer=${encodeURIComponent(ministro || "")}`;
+    return `<a class="rep-song-row" href="${href}"><span>${songNum}. ${item.text}</span>${tone ? `<span class="rep-song-tone">${tone}</span>` : ""}</a>`;
+  }).join("");
+  return `<div class="rep-ordered">${rows}</div>`;
+}
+
 // ── Listas: próximos cultos direto na tela, passados escondidos no histórico ──
 function cultoCardHtml(c, isPast) {
   const dateLabel = new Date(c.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
-  const rep = (c.repertorio || []).map(title => {
-    const song = lastByTitle[title];
-    const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "") : "";
-    const href = `cifras.html?song=${encodeURIComponent(title)}&singer=${encodeURIComponent(c.ministro || "")}`;
-    return `<a class="rep-pill" href="${href}">${title}${tone ? " · " + tone : ""}</a>`;
-  }).join("");
+  const rep = renderRepertorio(c.repertorio, c.ministro);
   const ensaioLabel = c.ensaioData
     ? new Date(c.ensaioData + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) + (c.ensaioHorario ? ` às ${c.ensaioHorario}` : "")
     : "";
@@ -189,7 +208,7 @@ function cultoCardHtml(c, isPast) {
       <div class="role-row" style="margin-top:12px;"><span class="role-tag">Ministro</span><span class="role-val">${c.ministro || "—"}</span></div>
       <div class="role-row"><span class="role-tag">Músicos</span><span class="role-val">${(c.musicos || []).map(m => `${m.name} (${m.instrumento})`).join(", ") || "—"}</span></div>
       <div class="role-row"><span class="role-tag">Backing</span><span class="role-val">${(c.vocalBacking || []).join(", ") || "—"}</span></div>
-      ${rep ? `<div class="rep-list">${rep}</div>` : ""}
+      ${rep}
       <button class="share-culto-btn" data-date="${c.date}" style="width:100%;margin-top:12px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:0.82rem;font-weight:700;padding:10px;cursor:pointer;">📤 Compartilhar</button>
       <div style="display:flex;gap:8px;margin-top:8px;">
         <a href="admin-escala.html?date=${encodeURIComponent(c.date)}&label=${encodeURIComponent(c.label || "")}" style="flex:1;text-align:center;border:1px solid var(--border);border-radius:10px;padding:8px;font-size:0.78rem;font-weight:600;color:var(--accent);text-decoration:none;">Editar</a>
@@ -268,10 +287,17 @@ function buildCultoShareText(c, byTitle) {
   if ((c.repertorio || []).length) {
     lines.push("");
     lines.push("*Repertório:*");
-    c.repertorio.forEach((title, i) => {
-      const song = byTitle[title];
+    let songNum = 0;
+    c.repertorio.forEach(item => {
+      if (item.type === "header") {
+        songNum = 0;
+        lines.push(`_${item.text}_`);
+        return;
+      }
+      songNum++;
+      const song = byTitle[item.text];
       const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "") : "";
-      lines.push(`${i + 1}. ${title}${tone ? " (" + tone + ")" : ""}`);
+      lines.push(`${songNum}. ${item.text}${tone ? " (" + tone + ")" : ""}`);
     });
   }
   lines.push("");
