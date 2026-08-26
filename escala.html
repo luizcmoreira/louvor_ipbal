@@ -36,10 +36,15 @@
   }
   .cal-day.empty { visibility:hidden; }
   .cal-day.today { background:var(--card-2); font-weight:700; }
-  .cal-day.has-culto { cursor:pointer; font-weight:700; }
-  .cal-day.has-culto.future { background:rgba(30,107,63,0.12); color:var(--accent); }
-  .cal-day.has-culto.past { background:rgba(92,102,95,0.10); color:var(--muted); }
-  .cal-dot { width:5px; height:5px; border-radius:50%; background:currentColor; margin-top:1px; }
+  .cal-day.marked { cursor:pointer; font-weight:700; }
+  .cal-day.has-culto { background:rgba(37,99,168,0.14); color:#2563a8; }
+  .cal-day.has-ensaio { background:rgba(178,63,63,0.14); color:#b23f3f; }
+  .cal-day.has-culto.has-ensaio { background:linear-gradient(135deg, rgba(37,99,168,0.18) 50%, rgba(178,63,63,0.18) 50%); color:var(--text); }
+  .cal-day.marked.past { opacity:0.55; }
+  .cal-dots { display:flex; gap:2px; margin-top:1px; }
+  .cal-dot { width:5px; height:5px; border-radius:50%; }
+  .cal-dot.culto { background:#2563a8; }
+  .cal-dot.ensaio { background:#b23f3f; }
 
   .culto {
     background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px;
@@ -137,24 +142,30 @@ function renderCalendar() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = todayStr();
   const byDate = Object.fromEntries(lastEscala.map(c => [c.date, c]));
+  const byEnsaio = Object.fromEntries(lastEscala.filter(c => c.ensaioData).map(c => [c.ensaioData, c]));
 
   const dows = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
   let html = dows.map(d => `<div class="cal-dow">${d}</div>`).join("");
   for (let i = 0; i < firstWeekday; i++) html += `<div class="cal-day empty"></div>`;
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-    const has = byDate[dateStr];
+    const culto = byDate[dateStr];
+    const ensaio = byEnsaio[dateStr];
     const isToday = dateStr === today;
     const cls = ["cal-day"];
     if (isToday) cls.push("today");
-    if (has) cls.push("has-culto", dateStr < today ? "past" : "future");
-    html += `<div class="${cls.join(" ")}" data-date="${dateStr}"><span>${d}</span>${has ? '<span class="cal-dot"></span>' : ""}</div>`;
+    if (culto) cls.push("marked", "has-culto");
+    if (ensaio) cls.push("marked", "has-ensaio");
+    if ((culto || ensaio) && dateStr < today) cls.push("past");
+    const dots = (culto ? '<span class="cal-dot culto"></span>' : "") + (ensaio ? '<span class="cal-dot ensaio"></span>' : "");
+    html += `<div class="${cls.join(" ")}" data-date="${dateStr}" data-culto-date="${culto ? dateStr : ""}"><span>${d}</span>${dots ? `<span class="cal-dots">${dots}</span>` : ""}</div>`;
   }
   const grid = document.getElementById("cal-grid");
   grid.innerHTML = html;
-  grid.querySelectorAll(".cal-day.has-culto").forEach(cell => {
+  grid.querySelectorAll(".cal-day.marked").forEach(cell => {
     cell.addEventListener("click", () => {
-      const dateStr = cell.dataset.date;
+      const dateStr = cell.dataset.cultoDate;
+      if (!dateStr) return;
       if (dateStr < today && !historyOpen) toggleHistory();
       setTimeout(() => {
         const el = document.getElementById("culto-" + encodeURIComponent(dateStr));
