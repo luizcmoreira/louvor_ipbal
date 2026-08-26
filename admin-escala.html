@@ -164,7 +164,9 @@ async function prefillEdit() {
   });
   // c.repertorio já vem como lista ORDENADA de {type:"song"|"header", text}
   // — carrega direto no estado, sem depender da ordem dos checkboxes.
-  repItems = (c.repertorio || []).map(item => ({ ...item }));
+  // normalizeRepItem cobre o caso do Apps Script ainda não ter sido implantado
+  // com a versão nova (aí a API manda string crua em vez de {type,text}).
+  repItems = (c.repertorio || []).map(normalizeRepItem);
   repItems.filter(item => item.type === "song").forEach(item => {
     const cb = document.querySelector(`.rep-cb[value="${CSS.escape(item.text)}"]`);
     if (cb) cb.checked = true;
@@ -211,6 +213,14 @@ function musicosEscolhidos() {
 }
 
 // ── Repertório ordenado (músicas + seções tipo "Prelúdio") ──────────────────
+// Aceita tanto o formato novo ({type,text}) quanto o formato antigo (string
+// crua "#Secao"/"Musica"), pro caso do Apps Script ainda não ter sido
+// implantado com a versão que já manda o formato novo.
+function normalizeRepItem(item) {
+  if (typeof item !== "string") return { ...item };
+  return item.startsWith("#") ? { type: "header", text: item.slice(1).trim() } : { type: "song", text: item };
+}
+
 function toggleRepSong(cb) {
   if (cb.checked) {
     if (!repItems.some(i => i.type === "song" && i.text === cb.value)) {

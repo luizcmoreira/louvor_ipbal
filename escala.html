@@ -187,10 +187,17 @@ document.getElementById("cal-next").addEventListener("click", () => {
 // Repertório é uma lista ORDENADA de {type:"song"|"header", text} — headers
 // (ex: "Prelúdio") viram um rótulo e a numeração das músicas recomeça a
 // cada seção.
+// normalizeRepItem cobre o caso do Apps Script ainda não ter sido implantado
+// com a versão nova (aí a API manda string crua em vez de {type,text}).
+function normalizeRepItem(item) {
+  if (typeof item !== "string") return item;
+  return item.startsWith("#") ? { type: "header", text: item.slice(1).trim() } : { type: "song", text: item };
+}
+
 function renderRepertorio(items, ministro) {
   if (!items || items.length === 0) return "";
   let songNum = 0;
-  const rows = items.map(item => {
+  const rows = items.map(normalizeRepItem).map(item => {
     if (item.type === "header") {
       songNum = 0;
       return `<div class="rep-section-title">${item.text}</div>`;
@@ -299,7 +306,7 @@ function buildCultoShareText(c, byTitle) {
     lines.push("");
     lines.push("*Repertório:*");
     let songNum = 0;
-    c.repertorio.forEach(item => {
+    c.repertorio.map(normalizeRepItem).forEach(item => {
       if (item.type === "header") {
         songNum = 0;
         lines.push(`_${item.text}_`);
