@@ -15,12 +15,37 @@
   .home-link { display:inline-flex; align-items:center; gap:4px; color:var(--accent); text-decoration:none; font-size:0.82rem; font-weight:700; }
   .header-row { display:flex; align-items:center; justify-content:space-between; }
   h1 { font-size:1.05rem; margin:0; }
-  .add-link { font-size:0.82rem; font-weight:700; color:var(--accent); text-decoration:none; border:1px solid var(--border); padding:6px 12px; border-radius:20px; }
+  .add-link { font-size:0.82rem; font-weight:700; color:var(--accent); text-decoration:none; border:1px solid var(--border); padding:6px 12px; border-radius:20px; background:none; cursor:pointer; }
   main { padding:16px; display:flex; flex-direction:column; gap:14px; max-width:520px; margin:0 auto; }
+
+  .calendar-box {
+    background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px;
+    box-shadow:0 1px 3px rgba(20,30,20,0.05);
+  }
+  .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .cal-header span { font-weight:700; font-size:0.92rem; text-transform:capitalize; }
+  .cal-nav-btn {
+    width:30px; height:30px; border-radius:50%; border:1px solid var(--border); background:var(--card-2);
+    color:var(--text); font-size:1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .cal-grid { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:3px; }
+  .cal-dow { min-width:0; text-align:center; font-size:0.68rem; font-weight:700; color:var(--muted); padding-bottom:4px; }
+  .cal-day {
+    min-width:0; aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border-radius:8px; font-size:0.8rem; color:var(--text); position:relative;
+  }
+  .cal-day.empty { visibility:hidden; }
+  .cal-day.today { background:var(--card-2); font-weight:700; }
+  .cal-day.has-culto { cursor:pointer; font-weight:700; }
+  .cal-day.has-culto.future { background:rgba(30,107,63,0.12); color:var(--accent); }
+  .cal-day.has-culto.past { background:rgba(92,102,95,0.10); color:var(--muted); }
+  .cal-dot { width:5px; height:5px; border-radius:50%; background:currentColor; margin-top:1px; }
+
   .culto {
     background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px;
     box-shadow:0 1px 3px rgba(20,30,20,0.05);
   }
+  .culto.past { opacity:0.72; }
   .culto-date { font-size:0.78rem; font-weight:700; color:var(--accent); text-transform:capitalize; }
   .culto-label { font-size:1.02rem; font-weight:700; margin:2px 0 12px; }
   .role-row { display:flex; gap:8px; margin-bottom:6px; font-size:0.85rem; }
@@ -32,6 +57,11 @@
     border-radius:20px; padding:5px 12px; text-decoration:none;
   }
   .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:40px 20px; }
+  .section-list { display:flex; flex-direction:column; gap:14px; }
+  .history-toggle {
+    width:100%; text-align:center; background:var(--card-2); border:1px dashed var(--border);
+    border-radius:12px; padding:12px; font-size:0.85rem; font-weight:600; color:var(--muted); cursor:pointer;
+  }
 </style>
 </head>
 <script src="config.js"></script>
@@ -45,11 +75,34 @@
   </div>
 </header>
 
-<main id="main"></main>
+<main>
+  <div class="calendar-box">
+    <div class="cal-header">
+      <button type="button" id="cal-prev" class="cal-nav-btn">‹</button>
+      <span id="cal-month-label"></span>
+      <button type="button" id="cal-next" class="cal-nav-btn">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+
+  <div id="upcoming-list" class="section-list"></div>
+  <button type="button" id="history-toggle-btn" class="history-toggle" style="display:none;"></button>
+  <div id="history-list" class="section-list" style="display:none;"></div>
+</main>
 
 <script>
+let lastEscala = [];
+let lastByTitle = {};
+let calDate = new Date();
+let historyOpen = false;
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 async function load() {
-  const main = document.getElementById("main");
+  const upcomingEl = document.getElementById("upcoming-list");
+  upcomingEl.innerHTML = "<p style='color:var(--muted);padding:8px 0;'>Carregando…</p>";
   let escala, songs;
   try {
     [escala, songs] = await Promise.all([
@@ -57,57 +110,141 @@ async function load() {
       fetch(API_URL + "?sheet=Musicas", { cache: "no-store" }).then(r => r.json()),
     ]);
   } catch (e) {
-    main.innerHTML = "<p style='color:#b23f3f'>Não consegui carregar a escala.</p>";
+    upcomingEl.innerHTML = "<p style='color:#b23f3f'>Não consegui carregar a escala.</p>";
     return;
   }
 
-  if (escala.length === 0) {
-    main.innerHTML = `<p class="empty">Nenhum culto na escala ainda.<br><a class="add-link" href="admin-escala.html" style="display:inline-block;margin-top:12px;">+ Adicionar o primeiro</a></p>`;
-    return;
+  lastEscala = escala;
+  lastByTitle = Object.fromEntries(songs.map(s => [s.title, s]));
+
+  renderCalendar();
+  renderLists();
+}
+load();
+
+// ── Calendário do mês — marca os dias que têm culto, clicar rola até o card ──
+function renderCalendar() {
+  const monthNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  document.getElementById("cal-month-label").textContent = `${monthNames[month]} ${year}`;
+
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = todayStr();
+  const byDate = Object.fromEntries(lastEscala.map(c => [c.date, c]));
+
+  const dows = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+  let html = dows.map(d => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < firstWeekday; i++) html += `<div class="cal-day empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    const has = byDate[dateStr];
+    const isToday = dateStr === today;
+    const cls = ["cal-day"];
+    if (isToday) cls.push("today");
+    if (has) cls.push("has-culto", dateStr < today ? "past" : "future");
+    html += `<div class="${cls.join(" ")}" data-date="${dateStr}"><span>${d}</span>${has ? '<span class="cal-dot"></span>' : ""}</div>`;
   }
-
-  const byTitle = Object.fromEntries(songs.map(s => [s.title, s]));
-  const sorted = [...escala].sort((a, b) => a.date.localeCompare(b.date));
-
-  main.innerHTML = sorted.map(c => {
-    const dateLabel = new Date(c.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
-    const rep = (c.repertorio || []).map(title => {
-      const song = byTitle[title];
-      const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "") : "";
-      const href = `cifras.html?song=${encodeURIComponent(title)}&singer=${encodeURIComponent(c.ministro || "")}`;
-      return `<a class="rep-pill" href="${href}">${title}${tone ? " · " + tone : ""}</a>`;
-    }).join("");
-    const ensaioLabel = c.ensaioData
-      ? new Date(c.ensaioData + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) + (c.ensaioHorario ? ` às ${c.ensaioHorario}` : "")
-      : "";
-    return `
-      <div class="culto" id="culto-${encodeURIComponent(c.date)}">
-        <div class="culto-date">${dateLabel}</div>
-        <div class="culto-label">${c.label || ""}</div>
-        ${ensaioLabel ? `<p style="font-size:0.82rem;background:var(--card-2);border-radius:8px;padding:7px 10px;margin:8px 0 0;">🗓️ Ensaio: <b>${ensaioLabel}</b></p>` : ""}
-        <div class="role-row" style="margin-top:12px;"><span class="role-tag">Ministro</span><span class="role-val">${c.ministro || "—"}</span></div>
-        <div class="role-row"><span class="role-tag">Músicos</span><span class="role-val">${(c.musicos || []).map(m => `${m.name} (${m.instrumento})`).join(", ") || "—"}</span></div>
-        <div class="role-row"><span class="role-tag">Backing</span><span class="role-val">${(c.vocalBacking || []).join(", ") || "—"}</span></div>
-        ${rep ? `<div class="rep-list">${rep}</div>` : ""}
-        <button class="share-culto-btn" data-date="${c.date}" style="width:100%;margin-top:12px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:0.82rem;font-weight:700;padding:10px;cursor:pointer;">📤 Compartilhar</button>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <a href="admin-escala.html?date=${encodeURIComponent(c.date)}&label=${encodeURIComponent(c.label || "")}" style="flex:1;text-align:center;border:1px solid var(--border);border-radius:10px;padding:8px;font-size:0.78rem;font-weight:600;color:var(--accent);text-decoration:none;">Editar</a>
-          <button class="delete-culto-btn" data-date="${c.date}" data-label="${escapeAttr(c.label || "")}" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:#b23f3f;font-size:0.78rem;font-weight:600;padding:8px;cursor:pointer;">Excluir culto</button>
-        </div>
-      </div>`;
-  }).join("");
-
-  main.querySelectorAll(".delete-culto-btn").forEach(btn => {
-    btn.addEventListener("click", () => deleteCulto(btn.dataset.date, btn.dataset.label));
-  });
-  main.querySelectorAll(".share-culto-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const c = sorted.find(x => x.date === btn.dataset.date);
-      if (c) shareCulto(c, byTitle);
+  const grid = document.getElementById("cal-grid");
+  grid.innerHTML = html;
+  grid.querySelectorAll(".cal-day.has-culto").forEach(cell => {
+    cell.addEventListener("click", () => {
+      const dateStr = cell.dataset.date;
+      if (dateStr < today && !historyOpen) toggleHistory();
+      setTimeout(() => {
+        const el = document.getElementById("culto-" + encodeURIComponent(dateStr));
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, historyOpen ? 50 : 150);
     });
   });
 }
-load();
+
+document.getElementById("cal-prev").addEventListener("click", () => {
+  calDate = new Date(calDate.getFullYear(), calDate.getMonth() - 1, 1);
+  renderCalendar();
+});
+document.getElementById("cal-next").addEventListener("click", () => {
+  calDate = new Date(calDate.getFullYear(), calDate.getMonth() + 1, 1);
+  renderCalendar();
+});
+
+// ── Listas: próximos cultos direto na tela, passados escondidos no histórico ──
+function cultoCardHtml(c, isPast) {
+  const dateLabel = new Date(c.date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
+  const rep = (c.repertorio || []).map(title => {
+    const song = lastByTitle[title];
+    const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "") : "";
+    const href = `cifras.html?song=${encodeURIComponent(title)}&singer=${encodeURIComponent(c.ministro || "")}`;
+    return `<a class="rep-pill" href="${href}">${title}${tone ? " · " + tone : ""}</a>`;
+  }).join("");
+  const ensaioLabel = c.ensaioData
+    ? new Date(c.ensaioData + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) + (c.ensaioHorario ? ` às ${c.ensaioHorario}` : "")
+    : "";
+  return `
+    <div class="culto${isPast ? " past" : ""}" id="culto-${encodeURIComponent(c.date)}">
+      <div class="culto-date">${dateLabel}</div>
+      <div class="culto-label">${c.label || ""}</div>
+      ${ensaioLabel ? `<p style="font-size:0.82rem;background:var(--card-2);border-radius:8px;padding:7px 10px;margin:8px 0 0;">🗓️ Ensaio: <b>${ensaioLabel}</b></p>` : ""}
+      <div class="role-row" style="margin-top:12px;"><span class="role-tag">Ministro</span><span class="role-val">${c.ministro || "—"}</span></div>
+      <div class="role-row"><span class="role-tag">Músicos</span><span class="role-val">${(c.musicos || []).map(m => `${m.name} (${m.instrumento})`).join(", ") || "—"}</span></div>
+      <div class="role-row"><span class="role-tag">Backing</span><span class="role-val">${(c.vocalBacking || []).join(", ") || "—"}</span></div>
+      ${rep ? `<div class="rep-list">${rep}</div>` : ""}
+      <button class="share-culto-btn" data-date="${c.date}" style="width:100%;margin-top:12px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-size:0.82rem;font-weight:700;padding:10px;cursor:pointer;">📤 Compartilhar</button>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <a href="admin-escala.html?date=${encodeURIComponent(c.date)}&label=${encodeURIComponent(c.label || "")}" style="flex:1;text-align:center;border:1px solid var(--border);border-radius:10px;padding:8px;font-size:0.78rem;font-weight:600;color:var(--accent);text-decoration:none;">Editar</a>
+        <button class="delete-culto-btn" data-date="${c.date}" data-label="${escapeAttr(c.label || "")}" style="flex:1;background:none;border:1px solid var(--border);border-radius:10px;color:#b23f3f;font-size:0.78rem;font-weight:600;padding:8px;cursor:pointer;">Excluir culto</button>
+      </div>
+    </div>`;
+}
+
+function wireCultoButtons(container) {
+  container.querySelectorAll(".delete-culto-btn").forEach(btn => {
+    btn.addEventListener("click", () => deleteCulto(btn.dataset.date, btn.dataset.label));
+  });
+  container.querySelectorAll(".share-culto-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const c = lastEscala.find(x => x.date === btn.dataset.date);
+      if (c) shareCulto(c, lastByTitle);
+    });
+  });
+}
+
+function renderLists() {
+  const today = todayStr();
+  const sorted = [...lastEscala].sort((a, b) => a.date.localeCompare(b.date));
+  const upcoming = sorted.filter(c => c.date >= today);
+  const past = sorted.filter(c => c.date < today).reverse(); // mais recente primeiro
+
+  const upcomingEl = document.getElementById("upcoming-list");
+  if (sorted.length === 0) {
+    upcomingEl.innerHTML = `<p class="empty">Nenhum culto na escala ainda.<br><a class="add-link" href="admin-escala.html" style="display:inline-block;margin-top:12px;">+ Adicionar o primeiro</a></p>`;
+  } else if (upcoming.length === 0) {
+    upcomingEl.innerHTML = `<p class="empty">Nenhum culto futuro na escala.</p>`;
+  } else {
+    upcomingEl.innerHTML = upcoming.map(c => cultoCardHtml(c, false)).join("");
+    wireCultoButtons(upcomingEl);
+  }
+
+  const toggleBtn = document.getElementById("history-toggle-btn");
+  const historyEl = document.getElementById("history-list");
+  if (past.length === 0) {
+    toggleBtn.style.display = "none";
+    historyEl.style.display = "none";
+  } else {
+    toggleBtn.style.display = "block";
+    toggleBtn.textContent = historyOpen ? "▲ Esconder histórico" : `▼ Ver histórico (${past.length})`;
+    historyEl.innerHTML = past.map(c => cultoCardHtml(c, true)).join("");
+    wireCultoButtons(historyEl);
+    historyEl.style.display = historyOpen ? "flex" : "none";
+  }
+}
+
+function toggleHistory() {
+  historyOpen = !historyOpen;
+  renderLists();
+}
+document.getElementById("history-toggle-btn").addEventListener("click", toggleHistory);
 
 function escapeAttr(s) {
   return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
