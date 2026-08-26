@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sugestões — Ministério de Louvor</title>
+<style>
+  :root {
+    --bg: #f5f7f4; --card: #ffffff; --card-2: #eef2ec; --text: #1c2620; --muted: #5c665f;
+    --accent: #1e6b3f; --accent-on: #ffffff; --border: #dde3da;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); padding-bottom:40px; }
+  header { padding:14px 16px 12px; border-bottom:1px solid var(--border); }
+  .home-link { display:inline-flex; align-items:center; gap:4px; color:var(--accent); text-decoration:none; font-size:0.82rem; font-weight:700; margin-bottom:6px; }
+  h1 { font-size:1.05rem; margin:0; }
+  .subtitle { font-size:0.82rem; color:var(--muted); margin:4px 0 0; }
+  main { padding:16px; max-width:520px; margin:0 auto; }
+
+  .add-box {
+    background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px;
+    box-shadow:0 1px 3px rgba(20,30,20,0.05); margin-bottom:20px;
+  }
+  .add-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .add-row input {
+    flex:1 1 160px; padding:10px 12px; border-radius:10px; border:1px solid var(--border);
+    background:#fff; color:var(--text); font-size:0.92rem; box-sizing:border-box;
+  }
+  .add-row input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(30,107,63,0.15); }
+  .add-btn {
+    width:100%; margin-top:10px; padding:11px; border-radius:10px; border:none;
+    background:var(--accent); color:#fff; font-weight:700; font-size:0.92rem; cursor:pointer;
+  }
+  .add-msg { font-size:0.8rem; text-align:center; margin-top:8px; }
+
+  .list-title { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted); margin:0 0 10px; }
+  .sug-item {
+    display:flex; align-items:center; gap:12px;
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    padding:13px 16px; margin-bottom:9px; box-shadow:0 1px 3px rgba(20,30,20,0.04);
+  }
+  .sug-icon {
+    flex-shrink:0; width:38px; height:38px; border-radius:10px; background:var(--card-2);
+    color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:1.05rem;
+  }
+  .sug-title { font-weight:700; font-size:0.96rem; margin:0; }
+  .sug-artist { font-size:0.82rem; color:var(--muted); margin:1px 0 0; }
+  .sug-del {
+    margin-left:auto; flex-shrink:0; background:none; border:none; color:var(--muted);
+    font-size:0.95rem; cursor:pointer; padding:6px;
+  }
+  .sug-del:hover { color:#b23f3f; }
+  .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:30px 20px; }
+</style>
+</head>
+<script src="config.js"></script>
+<body>
+
+<header>
+  <a class="home-link" href="cifras.html">← Cifras</a>
+  <h1>💡 Sugestões</h1>
+  <p class="subtitle">Ideias de músicas pro repertório futuro</p>
+</header>
+
+<main>
+  <div class="add-box">
+    <div class="add-row">
+      <input id="sug-title" placeholder="Nome da música">
+      <input id="sug-artist" placeholder="Artista/banda">
+    </div>
+    <button class="add-btn" id="sug-add-btn" onclick="addSugestao()">+ Adicionar sugestão</button>
+    <p class="add-msg" id="sug-msg"></p>
+  </div>
+
+  <p class="list-title">Sugeridas</p>
+  <div id="sug-list"></div>
+</main>
+
+<script>
+async function load() {
+  const list = document.getElementById("sug-list");
+  list.innerHTML = "<p style='color:var(--muted);font-size:0.9rem;'>Carregando…</p>";
+  let sugestoes;
+  try {
+    sugestoes = await fetch(API_URL + "?sheet=Sugestoes", { cache: "no-store" }).then(r => r.json());
+  } catch (e) {
+    list.innerHTML = "<p style='color:#b23f3f'>Não consegui carregar as sugestões.</p>";
+    return;
+  }
+
+  if (sugestoes.length === 0) {
+    list.innerHTML = `<p class="empty">Nenhuma sugestão ainda — seja o primeiro!</p>`;
+    return;
+  }
+
+  list.innerHTML = sugestoes.map((s, i) => `
+    <div class="sug-item">
+      <div class="sug-icon">🎵</div>
+      <div>
+        <p class="sug-title">${s.title}</p>
+        ${s.artist ? `<p class="sug-artist">${s.artist}</p>` : ""}
+      </div>
+      <button class="sug-del" data-title="${escapeAttr(s.title)}" data-artist="${escapeAttr(s.artist || "")}" title="Remover">✕</button>
+    </div>`).join("");
+
+  list.querySelectorAll(".sug-del").forEach(btn => {
+    btn.addEventListener("click", () => deleteSugestao(btn.dataset.title, btn.dataset.artist));
+  });
+}
+load();
+
+function escapeAttr(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
+async function addSugestao() {
+  const title = document.getElementById("sug-title").value.trim();
+  const artist = document.getElementById("sug-artist").value.trim();
+  const msg = document.getElementById("sug-msg");
+  if (!title) { msg.style.color = "#b23f3f"; msg.textContent = "Preenche pelo menos o nome da música."; return; }
+  const btn = document.getElementById("sug-add-btn");
+  btn.disabled = true; btn.textContent = "Adicionando…";
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "addSugestao", title, artist }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao adicionar");
+    document.getElementById("sug-title").value = "";
+    document.getElementById("sug-artist").value = "";
+    msg.style.color = "#1e6b3f";
+    msg.textContent = "Sugestão adicionada!";
+    setTimeout(() => { msg.textContent = ""; }, 2000);
+    load();
+  } catch (e) {
+    msg.style.color = "#b23f3f";
+    msg.textContent = "Não deu pra adicionar: " + e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "+ Adicionar sugestão";
+  }
+}
+
+async function deleteSugestao(title, artist) {
+  if (!confirm(`Remover a sugestão "${title}"?`)) return;
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "deleteSugestao", title, artist }),
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "falha ao remover");
+    load();
+  } catch (e) {
+    alert("Não deu pra remover agora: " + e.message);
+  }
+}
+</script>
+</body>
+</html>

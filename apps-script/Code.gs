@@ -13,6 +13,7 @@
  * Participantes: name | vocal | instrumentos
  *               (vocal: ministro / ministra / backing / vazio)
  *               (instrumentos: lista separada por vírgula)
+ * Sugestoes:    title | artist
  */
 
 function doGet(e) {
@@ -59,6 +60,10 @@ function doPost(e) {
         ensaioData: body.ensaioData, ensaioHorario: body.ensaioHorario, obsAntes: body.obsAntes, obsDepois: body.obsDepois });
   } else if (body.action === "deleteEscala") {
     deleteRowByMatch("Escala", { date: body.date, label: body.label });
+  } else if (body.action === "addSugestao") {
+    ss.getSheetByName("Sugestoes").appendRow([body.title || "", body.artist || ""]);
+  } else if (body.action === "deleteSugestao") {
+    deleteRowByMatch("Sugestoes", { title: body.title, artist: body.artist || "" });
   } else {
     return jsonOut({ ok: false, error: "ação desconhecida" });
   }
@@ -161,6 +166,7 @@ function readSheet(name) {
   if (name === "Musicas") return objs.map(mapMusica);
   if (name === "Escala") return objs.map(mapEscala);
   if (name === "Participantes") return objs.map(mapParticipante);
+  if (name === "Sugestoes") return objs.map(mapSugestao);
   return objs;
 }
 
@@ -201,6 +207,13 @@ function mapParticipante(o) {
     name: o.name,
     vocal: o.vocal || null,
     instrumentos: parseList(o.instrumentos),
+  };
+}
+
+function mapSugestao(o) {
+  return {
+    title: o.title || "",
+    artist: o.artist || "",
   };
 }
 
