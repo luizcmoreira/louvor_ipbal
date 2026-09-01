@@ -193,7 +193,7 @@ async function salvar() {
 }
 
 // ── Conversor "acorde em cima da letra" → ChordPro inline ──────────────────
-const CHORD_RE = /^[A-G](#|b)?(m7b5|m7|m9|m6|m|maj7|maj9|maj|min7|min9|min|dim7|dim|aug|sus4|sus2|sus|add9|add2|add|6|7|9|11|13)?(\/[A-G](#|b)?)?$/;
+const CHORD_RE = /^[A-G](#|b)?(m7b5|m7|m9|m6|m|maj7|maj9|maj|min7|min9|min|dim7|dim|aug|sus4|sus2|sus|add9|add2|add|6|7|9|11|13|4|2|5)?(\/[A-G](#|b)?)?$/;
 
 function isChordToken(tok) { return CHORD_RE.test(tok); }
 
