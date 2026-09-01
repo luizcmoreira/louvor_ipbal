@@ -74,12 +74,26 @@
 <main id="main"></main>
 
 <script>
-// Aceita tanto o formato novo ({type,text}) quanto o formato antigo (string
-// crua "#Secao"/"Musica"), pro caso do Apps Script ainda não ter sido
-// implantado com a versão que já manda o formato novo.
+// normalizeRepItem/parseRepItemString/parseSongPartString cobrem o caso do
+// Apps Script ainda não ter sido implantado com a versão nova (aí a API
+// manda string crua em vez do objeto já processado) — espelha o parser do
+// Code.gs pra não quebrar a exibição enquanto isso não é feito.
 function normalizeRepItem(item) {
-  if (typeof item !== "string") return item;
-  return item.startsWith("#") ? { type: "header", text: item.slice(1).trim() } : { type: "song", text: item };
+  return typeof item === "string" ? parseRepItemString(item) : item;
+}
+function parseRepItemString(t) {
+  if (t.startsWith("#")) return { type: "header", text: t.slice(1).trim() };
+  if (t.startsWith("&")) {
+    const parts = t.slice(1).split(" + ").map(p => p.trim()).filter(Boolean);
+    return { type: "medley", songs: parts.map(parseSongPartString) };
+  }
+  const song = parseSongPartString(t);
+  return { type: "song", text: song.text, obs: song.obs || "" };
+}
+function parseSongPartString(p) {
+  const idx = p.indexOf("||");
+  if (idx === -1) return { text: p, obs: "" };
+  return { text: p.slice(0, idx).trim(), obs: p.slice(idx + 2).trim() };
 }
 
 async function load() {

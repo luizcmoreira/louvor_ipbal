@@ -245,12 +245,26 @@ function musicosEscolhidos() {
 //   {type:"song", text, obs}                — música solo, com observação opcional
 //   {type:"medley", songs:[{text,obs}, ...]} — 2+ músicas emendadas, tocadas como uma coisa só
 //
-// Aceita tanto o formato novo quanto o formato antigo (string crua "#Secao"/
-// "Musica"), pro caso do Apps Script ainda não ter sido implantado com a
-// versão que já manda o formato novo.
+// Aceita tanto o formato novo quanto o formato antigo (string crua), pro
+// caso do Apps Script ainda não ter sido implantado com a versão que já
+// manda o objeto pronto — espelha o parser do Code.gs.
 function normalizeRepItem(item) {
   if (typeof item !== "string") return { ...item };
-  return item.startsWith("#") ? { type: "header", text: item.slice(1).trim() } : { type: "song", text: item, obs: "" };
+  return parseRepItemString(item);
+}
+function parseRepItemString(t) {
+  if (t.startsWith("#")) return { type: "header", text: t.slice(1).trim() };
+  if (t.startsWith("&")) {
+    const parts = t.slice(1).split(" + ").map(p => p.trim()).filter(Boolean);
+    return { type: "medley", songs: parts.map(parseSongPartString) };
+  }
+  const song = parseSongPartString(t);
+  return { type: "song", text: song.text, obs: song.obs || "" };
+}
+function parseSongPartString(p) {
+  const idx = p.indexOf("||");
+  if (idx === -1) return { text: p, obs: "" };
+  return { text: p.slice(0, idx).trim(), obs: p.slice(idx + 2).trim() };
 }
 
 // Uma música pode estar solta na lista ou dentro de um medley — usado pra
