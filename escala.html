@@ -65,6 +65,17 @@
     text-decoration:none; color:var(--text); font-size:0.86rem;
   }
   .rep-song-tone { font-weight:700; color:var(--accent); font-size:0.8rem; flex-shrink:0; }
+  .rep-medley { border-radius:10px; background:var(--card-2); margin-bottom:6px; padding:8px 10px; }
+  .rep-medley-head { font-size:0.86rem; font-weight:700; margin-bottom:4px; }
+  .rep-medley-tag {
+    display:inline-block; font-size:0.6rem; font-weight:700; letter-spacing:0.04em;
+    color:#8a3d1e; background:#fbe6d4; border-radius:6px; padding:2px 6px; margin-left:6px; vertical-align:middle;
+  }
+  .rep-medley-song {
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+    text-decoration:none; color:var(--text); font-size:0.86rem; padding:3px 0;
+  }
+  .rep-item-obs { font-size:0.76rem; color:var(--muted); padding:1px 0 3px; }
   .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:40px 20px; }
   .section-list { display:flex; flex-direction:column; gap:14px; }
   .history-toggle {
@@ -203,10 +214,18 @@ function renderRepertorio(items, ministro) {
       return `<div class="rep-section-title">${item.text}</div>`;
     }
     songNum++;
+    if (item.type === "medley") {
+      const songsHtml = item.songs.map(s => `
+        <a class="rep-medley-song" href="cifras.html?song=${encodeURIComponent(s.text)}&singer=${encodeURIComponent(ministro || "")}">
+          <span>${s.text}</span>
+        </a>
+        ${s.obs ? `<div class="rep-item-obs">📝 ${s.obs}</div>` : ""}`).join("");
+      return `<div class="rep-medley"><div class="rep-medley-head">${songNum}. Medley<span class="rep-medley-tag">MEDLEY</span></div>${songsHtml}</div>`;
+    }
+    const href = `cifras.html?song=${encodeURIComponent(item.text)}&singer=${encodeURIComponent(ministro || "")}`;
     const song = lastByTitle[item.text];
     const tone = song ? (song.presets?.[ministro] || song.originalKey || "") : "";
-    const href = `cifras.html?song=${encodeURIComponent(item.text)}&singer=${encodeURIComponent(ministro || "")}`;
-    return `<a class="rep-song-row" href="${href}"><span>${songNum}. ${item.text}</span>${tone ? `<span class="rep-song-tone">${tone}</span>` : ""}</a>`;
+    return `<a class="rep-song-row" href="${href}"><span>${songNum}. ${item.text}</span>${tone ? `<span class="rep-song-tone">${tone}</span>` : ""}</a>${item.obs ? `<div class="rep-item-obs">📝 ${item.obs}</div>` : ""}`;
   }).join("");
   return `<div class="rep-ordered">${rows}</div>`;
 }
@@ -313,9 +332,15 @@ function buildCultoShareText(c, byTitle) {
         return;
       }
       songNum++;
+      if (item.type === "medley") {
+        lines.push(`${songNum}. Medley: ${item.songs.map(s => s.text).join(" + ")}`);
+        item.songs.forEach(s => { if (s.obs) lines.push(`   📝 ${s.text}: ${s.obs}`); });
+        return;
+      }
       const song = byTitle[item.text];
       const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "") : "";
       lines.push(`${songNum}. ${item.text}${tone ? " (" + tone + ")" : ""}`);
+      if (item.obs) lines.push(`   📝 ${item.obs}`);
     });
   }
   lines.push("");

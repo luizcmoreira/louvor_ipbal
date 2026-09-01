@@ -26,6 +26,7 @@
     border:1px solid #dde3da; background:#ffffff; margin-bottom:6px; font-size:0.9rem;
   }
   .rep-item.header { background:#eef2ec; font-weight:700; }
+  .rep-item.medley { flex-direction:column; align-items:stretch; gap:6px; }
   .rep-item .rep-item-text { flex:1; }
   .rep-item-btns { display:flex; gap:2px; flex-shrink:0; }
   .rep-item-btns button {
@@ -34,6 +35,27 @@
   }
   .rep-item-btns button.danger { color:#b23f3f; }
   .rep-empty-hint { font-size:0.82rem; color:#5c665f; padding:6px 2px; }
+  .rep-merge-cb { display:flex; align-items:center; margin:0; }
+  .rep-merge-cb input { width:auto; }
+  .rep-item-main { display:flex; align-items:center; gap:8px; }
+  .medley-tag {
+    display:inline-block; font-size:0.62rem; font-weight:700; letter-spacing:0.04em;
+    color:#8a3d1e; background:#fbe6d4; border-radius:6px; padding:2px 6px; margin-left:6px; vertical-align:middle;
+  }
+  .medley-songs { display:flex; flex-direction:column; gap:4px; padding-left:12px; border-left:2px solid #dde3da; }
+  .medley-song-row { display:flex; align-items:center; gap:8px; font-size:0.86rem; }
+  .medley-song-row span { flex:1; }
+  .rep-item-obs { font-size:0.78rem; color:#5c665f; padding:2px 4px 0; }
+  .rep-obs-editor { display:flex; flex-direction:column; gap:6px; padding:4px; }
+  .rep-obs-editor textarea { font-size:0.85rem; }
+  .rep-obs-editor button {
+    width:auto; align-self:flex-end; margin-top:0; padding:6px 12px; font-size:0.8rem;
+    background:#1e6b3f; color:#fff;
+  }
+  #rep-merge-btn {
+    display:none; width:100%; margin-top:6px; padding:9px; border-radius:8px; border:1px dashed #1e6b3f;
+    background:#eef2ec; color:#1e6b3f; font-weight:700; font-size:0.85rem; cursor:pointer;
+  }
   .musico-row {
     display:flex; align-items:center; gap:10px; border:1px solid #dde3da; border-radius:12px;
     padding:9px 12px; margin-top:8px; background:#ffffff;
@@ -70,11 +92,12 @@
 
 <label>Repertório (ordem de execução)</label>
 <div id="rep-selected" class="rep-ordered-list"></div>
+<button type="button" id="rep-merge-btn" onclick="unirMedley()">🔗 Unir as marcadas em medley</button>
 <div style="display:flex;gap:6px;margin-top:6px;">
   <input id="rep-header-input" placeholder="Nome da seção (ex: Prelúdio)" style="flex:1;">
   <button type="button" onclick="addRepHeader()" style="width:auto;margin-top:0;padding:0 14px;background:#eef2ec;color:#1c2620;border:1px solid #dde3da;">+ Seção</button>
 </div>
-<p class="hint" style="margin-bottom:6px;">Use as setas pra arrumar a ordem em que toca. Marca as músicas abaixo pra adicionar.</p>
+<p class="hint" style="margin-bottom:6px;">Use as setas pra arrumar a ordem em que toca. Marca a caixinha de 2+ músicas na lista acima pra unir num medley. O 📝 adiciona uma observação específica pra cada música. Marca as músicas abaixo pra adicionar.</p>
 <div class="check-grid" id="repertorio"></div>
 <p class="hint">O tom mostrado na Escala/Ensaios é o do ministro selecionado acima (ou o tom original, se não houver preset dele pra essa música).</p>
 
@@ -167,11 +190,7 @@ async function prefillEdit() {
   // normalizeRepItem cobre o caso do Apps Script ainda não ter sido implantado
   // com a versão nova (aí a API manda string crua em vez de {type,text}).
   repItems = (c.repertorio || []).map(normalizeRepItem);
-  repItems.filter(item => item.type === "song").forEach(item => {
-    const cb = document.querySelector(`.rep-cb[value="${CSS.escape(item.text)}"]`);
-    if (cb) cb.checked = true;
-  });
-  renderRepSelected();
+  renderRepSelected(); // também sincroniza as caixinhas da lista mestra de músicas
 
   document.getElementById("ensaioData").value = c.ensaioData || "";
   document.getElementById("ensaioHorario").value = c.ensaioHorario || "";
@@ -198,6 +217,14 @@ async function excluirCulto() {
 }
 
 function esc(s) { return (s || "").replace(/\\/g,"\\\\").replace(/"/g,'\\"'); }
+
+// Precisa espelhar exatamente o parseRepertorio()/stringifyRepItem() do Code.gs.
+function stringifyRepItem(item) {
+  if (item.type === "header") return "#" + item.text;
+  if (item.type === "medley") return "&" + item.songs.map(stringifySongPart).join(" + ");
+  return stringifySongPart(item);
+}
+function stringifySongPart(s) { return s.obs ? `${s.text}||${s.obs}` : s.text; }
 function checked(cls) { return [...document.querySelectorAll("." + cls + ":checked")].map(el => el.value); }
 
 function toggleMusico(cb) {
@@ -212,20 +239,35 @@ function musicosEscolhidos() {
   });
 }
 
-// ── Repertório ordenado (músicas + seções tipo "Prelúdio") ──────────────────
-// Aceita tanto o formato novo ({type,text}) quanto o formato antigo (string
-// crua "#Secao"/"Musica"), pro caso do Apps Script ainda não ter sido
-// implantado com a versão que já manda o formato novo.
+// ── Repertório ordenado (músicas, medleys e seções tipo "Prelúdio") ─────────
+// Cada item de repItems é:
+//   {type:"header", text}
+//   {type:"song", text, obs}                — música solo, com observação opcional
+//   {type:"medley", songs:[{text,obs}, ...]} — 2+ músicas emendadas, tocadas como uma coisa só
+//
+// Aceita tanto o formato novo quanto o formato antigo (string crua "#Secao"/
+// "Musica"), pro caso do Apps Script ainda não ter sido implantado com a
+// versão que já manda o formato novo.
 function normalizeRepItem(item) {
   if (typeof item !== "string") return { ...item };
-  return item.startsWith("#") ? { type: "header", text: item.slice(1).trim() } : { type: "song", text: item };
+  return item.startsWith("#") ? { type: "header", text: item.slice(1).trim() } : { type: "song", text: item, obs: "" };
+}
+
+// Uma música pode estar solta na lista ou dentro de um medley — usado pra
+// manter a caixinha da lista mestra de músicas sincronizada dos dois jeitos.
+function isSongUsed(text) {
+  return repItems.some(i =>
+    (i.type === "song" && i.text === text) ||
+    (i.type === "medley" && i.songs.some(s => s.text === text)));
 }
 
 function toggleRepSong(cb) {
   if (cb.checked) {
-    if (!repItems.some(i => i.type === "song" && i.text === cb.value)) {
-      repItems.push({ type: "song", text: cb.value });
-    }
+    if (!isSongUsed(cb.value)) repItems.push({ type: "song", text: cb.value, obs: "" });
+  } else if (!repItems.some(i => i.type === "song" && i.text === cb.value)) {
+    // Está dentro de um medley — não dá pra tirar por essa caixinha, só pelo
+    // ✕ da própria música dentro do medley.
+    cb.checked = true;
   } else {
     repItems = repItems.filter(i => !(i.type === "song" && i.text === cb.value));
   }
@@ -249,35 +291,140 @@ function moveRepItem(idx, dir) {
 }
 
 function removeRepItem(idx) {
-  const item = repItems[idx];
-  if (item.type === "song") {
-    const cb = document.querySelector(`.rep-cb[value="${CSS.escape(item.text)}"]`);
-    if (cb) cb.checked = false;
-  }
   repItems.splice(idx, 1);
   renderRepSelected();
+}
+
+// ── Medley: unir 2+ músicas marcadas na lista ordenada numa coisa só ────────
+let medleySelected = new Set();
+
+function toggleMedleySelect(idx, checked) {
+  if (checked) medleySelected.add(idx); else medleySelected.delete(idx);
+  document.getElementById("rep-merge-btn").style.display = medleySelected.size >= 2 ? "block" : "none";
+}
+
+function unirMedley() {
+  const idxs = [...medleySelected].sort((a, b) => a - b);
+  if (idxs.length < 2) return;
+  const songs = idxs.map(i => ({ text: repItems[i].text, obs: repItems[i].obs || "" }));
+  const insertAt = idxs[0];
+  for (let i = idxs.length - 1; i >= 0; i--) repItems.splice(idxs[i], 1);
+  repItems.splice(insertAt, 0, { type: "medley", songs });
+  medleySelected = new Set();
+  renderRepSelected();
+}
+
+function desagruparMedley(idx) {
+  const item = repItems[idx];
+  const songs = item.songs.map(s => ({ type: "song", text: s.text, obs: s.obs || "" }));
+  repItems.splice(idx, 1, ...songs);
+  renderRepSelected();
+}
+
+function removeMedleySong(idx, songIdx) {
+  const item = repItems[idx];
+  item.songs.splice(songIdx, 1);
+  if (item.songs.length === 1) repItems[idx] = { type: "song", text: item.songs[0].text, obs: item.songs[0].obs || "" };
+  else if (item.songs.length === 0) repItems.splice(idx, 1);
+  renderRepSelected();
+}
+
+// ── Observação por música (solo ou dentro de um medley) ─────────────────────
+let editingObs = null; // "idx:songIdx" (songIdx = "x" pra música solo)
+
+function obsKey(idx, songIdx) { return idx + ":" + (songIdx === null || songIdx === undefined ? "x" : songIdx); }
+
+function toggleObsEditor(idx, songIdx) {
+  const key = obsKey(idx, songIdx);
+  editingObs = editingObs === key ? null : key;
+  renderRepSelected();
+}
+
+function saveObs(idx, songIdx) {
+  const val = document.getElementById("obs-ta-" + obsKey(idx, songIdx)).value.trim();
+  if (songIdx === null || songIdx === undefined) repItems[idx].obs = val;
+  else repItems[idx].songs[songIdx].obs = val;
+  editingObs = null;
+  renderRepSelected();
+}
+
+function obsRowHtml(idx, songIdx, obs) {
+  const key = obsKey(idx, songIdx);
+  if (editingObs === key) {
+    return `<div class="rep-obs-editor">
+      <textarea id="obs-ta-${key}" rows="2" placeholder="Ex: começar direto no refrão">${escRep(obs || "")}</textarea>
+      <button type="button" onclick="saveObs(${idx}, ${songIdx === null || songIdx === undefined ? "null" : songIdx})">Salvar observação</button>
+    </div>`;
+  }
+  return obs ? `<div class="rep-item-obs">📝 ${escRep(obs)}</div>` : "";
+}
+
+function escRep(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function renderRepSelected() {
   const box = document.getElementById("rep-selected");
   if (repItems.length === 0) {
     box.innerHTML = `<p class="rep-empty-hint">Nada no repertório ainda — marca uma música abaixo ou adiciona uma seção.</p>`;
-    return;
-  }
-  let songNum = 0;
-  box.innerHTML = repItems.map((item, idx) => {
-    if (item.type === "header") songNum = 0;
-    const label = item.type === "song" ? `${++songNum}. ${item.text}` : item.text;
-    return `
-      <div class="rep-item${item.type === "header" ? " header" : ""}">
-        <span class="rep-item-text">${label}</span>
-        <div class="rep-item-btns">
-          <button type="button" onclick="moveRepItem(${idx},-1)" title="Mover pra cima">↑</button>
-          <button type="button" onclick="moveRepItem(${idx},1)" title="Mover pra baixo">↓</button>
-          <button type="button" class="danger" onclick="removeRepItem(${idx})" title="Remover">✕</button>
+  } else {
+    let songNum = 0;
+    box.innerHTML = repItems.map((item, idx) => {
+      if (item.type === "header") {
+        songNum = 0;
+        return `
+          <div class="rep-item header">
+            <span class="rep-item-text">${escRep(item.text)}</span>
+            <div class="rep-item-btns">
+              <button type="button" onclick="moveRepItem(${idx},-1)" title="Mover pra cima">↑</button>
+              <button type="button" onclick="moveRepItem(${idx},1)" title="Mover pra baixo">↓</button>
+              <button type="button" class="danger" onclick="removeRepItem(${idx})" title="Remover">✕</button>
+            </div>
+          </div>`;
+      }
+      songNum++;
+      if (item.type === "medley") {
+        const title = item.songs.map(s => s.text).join(" + ");
+        return `
+          <div class="rep-item medley">
+            <div class="rep-item-main">
+              <span class="rep-item-text">${songNum}. ${escRep(title)}<span class="medley-tag">MEDLEY</span></span>
+              <div class="rep-item-btns">
+                <button type="button" onclick="moveRepItem(${idx},-1)" title="Mover pra cima">↑</button>
+                <button type="button" onclick="moveRepItem(${idx},1)" title="Mover pra baixo">↓</button>
+                <button type="button" onclick="desagruparMedley(${idx})" title="Desagrupar">⛓️‍💥</button>
+                <button type="button" class="danger" onclick="removeRepItem(${idx})" title="Remover tudo">✕</button>
+              </div>
+            </div>
+            <div class="medley-songs">
+              ${item.songs.map((s, si) => `
+                <div class="medley-song-row">
+                  <span>${escRep(s.text)}</span>
+                  <div class="rep-item-btns">
+                    <button type="button" onclick="toggleObsEditor(${idx},${si})" title="Observação">📝</button>
+                    <button type="button" class="danger" onclick="removeMedleySong(${idx},${si})" title="Remover só essa">✕</button>
+                  </div>
+                </div>
+                ${obsRowHtml(idx, si, s.obs)}`).join("")}
+            </div>
+          </div>`;
+      }
+      return `
+        <div class="rep-item">
+          <label class="rep-merge-cb"><input type="checkbox" ${medleySelected.has(idx) ? "checked" : ""} onchange="toggleMedleySelect(${idx}, this.checked)"></label>
+          <span class="rep-item-text">${songNum}. ${escRep(item.text)}</span>
+          <div class="rep-item-btns">
+            <button type="button" onclick="toggleObsEditor(${idx})" title="Observação">📝</button>
+            <button type="button" onclick="moveRepItem(${idx},-1)" title="Mover pra cima">↑</button>
+            <button type="button" onclick="moveRepItem(${idx},1)" title="Mover pra baixo">↓</button>
+            <button type="button" class="danger" onclick="removeRepItem(${idx})" title="Remover">✕</button>
+          </div>
         </div>
-      </div>`;
-  }).join("");
+        ${obsRowHtml(idx, null, item.obs)}`;
+    }).join("");
+  }
+  document.querySelectorAll(".rep-cb").forEach(cb => { cb.checked = isSongUsed(cb.value); });
+  document.getElementById("rep-merge-btn").style.display = medleySelected.size >= 2 ? "block" : "none";
 }
 
 async function salvar() {
@@ -292,7 +439,7 @@ async function salvar() {
     ministro: document.getElementById("ministro").value,
     musicos,
     vocalBacking: checked("backing-cb").join(", "),
-    repertorio: repItems.map(i => i.type === "header" ? "#" + i.text : i.text).join(", "),
+    repertorio: repItems.map(stringifyRepItem).join(", "),
     ensaioData: document.getElementById("ensaioData").value,
     ensaioHorario: document.getElementById("ensaioHorario").value,
   };

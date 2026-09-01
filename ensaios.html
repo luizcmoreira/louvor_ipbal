@@ -45,6 +45,18 @@
   .rep-item-tone { font-size:0.85rem; font-weight:700; color:var(--accent); flex-shrink:0; }
   .rep-section-title { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin:12px 0 6px; }
   .rep-section-title:first-child { margin-top:0; }
+  .rep-medley { border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:8px; }
+  .rep-medley-head { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  .rep-medley-tag {
+    font-size:0.62rem; font-weight:700; letter-spacing:0.04em; color:#8a3d1e;
+    background:#fbe6d4; border-radius:6px; padding:2px 7px;
+  }
+  .rep-medley-song {
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:6px 0; text-decoration:none; color:var(--text);
+  }
+  .rep-medley-song + .rep-medley-song { border-top:1px dashed var(--border); }
+  .rep-item-obs { font-size:0.78rem; color:var(--muted); padding:2px 0 4px; }
   .empty { text-align:center; color:var(--muted); font-size:0.9rem; padding:40px 20px; }
 </style>
 </head>
@@ -103,10 +115,19 @@ async function load() {
         return `<div class="rep-section-title">${item.text}</div>`;
       }
       songNum++;
+      if (item.type === "medley") {
+        const songsHtml = item.songs.map(s => {
+          const song = byTitle[s.text];
+          const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "?") : "?";
+          const href = `cifras.html?song=${encodeURIComponent(s.text)}&singer=${encodeURIComponent(c.ministro || "")}`;
+          return `<a class="rep-medley-song" href="${href}"><span>${s.text}</span><span class="rep-item-tone">${tone}</span></a>${s.obs ? `<div class="rep-item-obs">📝 ${s.obs}</div>` : ""}`;
+        }).join("");
+        return `<div class="rep-medley"><div class="rep-medley-head"><span class="rep-item-title">${songNum}. Medley</span><span class="rep-medley-tag">MEDLEY</span></div>${songsHtml}</div>`;
+      }
       const song = byTitle[item.text];
       const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "?") : "?";
       const href = `cifras.html?song=${encodeURIComponent(item.text)}&singer=${encodeURIComponent(c.ministro || "")}`;
-      return `<a class="rep-item" href="${href}"><span class="rep-item-title">${songNum}. ${item.text}</span><span class="rep-item-tone">${tone}</span></a>`;
+      return `<a class="rep-item" href="${href}"><span class="rep-item-title">${songNum}. ${item.text}</span><span class="rep-item-tone">${tone}</span></a>${item.obs ? `<div class="rep-item-obs">📝 ${item.obs}</div>` : ""}`;
     }).join("");
 
     const ensaioLabel = c.ensaioData
@@ -169,9 +190,15 @@ function buildCultoShareText(c, byTitle) {
         return;
       }
       songNum++;
+      if (item.type === "medley") {
+        lines.push(`${songNum}. Medley: ${item.songs.map(s => s.text).join(" + ")}`);
+        item.songs.forEach(s => { if (s.obs) lines.push(`   📝 ${s.text}: ${s.obs}`); });
+        return;
+      }
       const song = byTitle[item.text];
       const tone = song ? (song.presets?.[c.ministro] || song.originalKey || "") : "";
       lines.push(`${songNum}. ${item.text}${tone ? " (" + tone + ")" : ""}`);
+      if (item.obs) lines.push(`   📝 ${item.obs}`);
     });
   }
   if (c.obsDepois) { lines.push(""); lines.push(`_Depois do ensaio:_ ${c.obsDepois}`); }

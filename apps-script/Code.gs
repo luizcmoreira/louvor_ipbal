@@ -7,7 +7,8 @@
  * Musicas:      title | originalKey | tom_Ricardo | tom_Kariny | tom_Luiz | chordpro | status | isNew | videoCompleta | videoCongregacional
  * Escala:       date | label | ministro | musicos | vocalBacking | repertorio | ensaioData | ensaioHorario | obsAntes | obsDepois
  *               (musicos: "Nome:Instrumento, Nome:Instrumento" — ex: "Luiz:Teclado, Caio:Guitarra")
- *               (vocalBacking / repertorio: lista separada por vírgula)
+ *               (vocalBacking / repertorio: lista separada por vírgula — ver
+ *                parseRepertorio() pro formato de seção/medley/observação)
  *               (ensaioData: yyyy-mm-dd do ensaio prévio, separado da data do culto)
  *               (obsAntes/obsDepois: observações livres, antes e depois do ensaio)
  * Participantes: name | vocal | instrumentos
@@ -84,11 +85,29 @@ function renameInEscalaRepertorio(oldTitle, newTitle) {
   for (let r = 1; r < values.length; r++) {
     const cell = values[r][repIdx];
     if (!cell) continue;
-    const titles = String(cell).split(",").map(t => t.trim());
-    if (!titles.includes(oldTitle)) continue;
-    const updated = titles.map(t => t === oldTitle ? newTitle : t).join(", ");
-    sheet.getRange(r + 1, repIdx + 1).setValue(updated);
+    // Reaproveita o parser (que já entende seção/medley/observação) pra achar
+    // o título em qualquer posição, inclusive dentro de um medley.
+    const items = parseRepertorio(cell);
+    let changed = false;
+    items.forEach(item => {
+      if (item.type === "song" && item.text === oldTitle) { item.text = newTitle; changed = true; }
+      if (item.type === "medley") {
+        item.songs.forEach(s => { if (s.text === oldTitle) { s.text = newTitle; changed = true; } });
+      }
+    });
+    if (!changed) continue;
+    sheet.getRange(r + 1, repIdx + 1).setValue(items.map(stringifyRepItem).join(", "));
   }
+}
+
+function stringifyRepItem(item) {
+  if (item.type === "header") return "#" + item.text;
+  if (item.type === "medley") return "&" + item.songs.map(stringifySongPart).join(" + ");
+  return stringifySongPart(item);
+}
+
+function stringifySongPart(s) {
+  return s.obs ? `${s.text}||${s.obs}` : s.text;
 }
 
 function updateRowByMatch(sheetName, matchCol, matchVal, patch) {
@@ -230,15 +249,32 @@ function parsePairs(s) {
 }
 
 // Repertório é uma lista ORDENADA (a ordem em que a música toca no culto).
-// Um item que começa com "#" é um título de seção (ex: "#Prelúdio"), o resto
-// é música de verdade — assim dá pra intercalar seções e músicas mantendo
-// tudo numa coluna só, na ordem exata em que foi montado.
+// Cada item, separado por vírgula, pode ser:
+//   #Texto              -> seção (ex: "#Prelúdio")
+//   Música               -> música solo
+//   Música||Observação   -> música solo com observação específica
+//   &MúsicaA + MúsicaB   -> medley (duas ou mais músicas emendadas, tocadas
+//                           como uma coisa só) — cada parte pode ter sua
+//                           própria observação com o mesmo "||Observação"
 function parseRepertorio(s) {
   if (!s) return [];
-  return String(s).split(",").map(t => t.trim()).filter(Boolean).map(t => {
-    if (t.startsWith("#")) return { type: "header", text: t.slice(1).trim() };
-    return { type: "song", text: t };
-  });
+  return String(s).split(",").map(t => t.trim()).filter(Boolean).map(parseRepItem);
+}
+
+function parseRepItem(t) {
+  if (t.startsWith("#")) return { type: "header", text: t.slice(1).trim() };
+  if (t.startsWith("&")) {
+    const parts = t.slice(1).split(" + ").map(p => p.trim()).filter(Boolean);
+    return { type: "medley", songs: parts.map(parseSongPart) };
+  }
+  const song = parseSongPart(t);
+  return { type: "song", text: song.text, obs: song.obs || "" };
+}
+
+function parseSongPart(p) {
+  const idx = p.indexOf("||");
+  if (idx === -1) return { text: p, obs: "" };
+  return { text: p.slice(0, idx).trim(), obs: p.slice(idx + 2).trim() };
 }
 
 function parseList(s) {
